@@ -335,6 +335,8 @@ func lndMain() error {
 		return err
 	}
 	defer rpcServer.Stop()
+	server.rpcServ = rpcServer
+
 
 	grpcServer := grpc.NewServer(serverOpts...)
 	lnrpc.RegisterLightningServer(grpcServer, rpcServer)

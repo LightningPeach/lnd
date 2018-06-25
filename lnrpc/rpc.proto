@@ -645,6 +645,8 @@ service Lightning {
             body: "*"
         };
     };
+
+    rpc SubscribeDynamicInvoices (stream DynamicInvoiceResponse) returns (stream DynamicInvoiceRequest);
 }
 
 message Transaction {
@@ -1703,7 +1705,10 @@ message Invoice {
     here as well.
     */
     int64 amt_paid_msat = 20 [json_name = "amt_paid_msat"];
+    /// Whether this invoice containes rPreimage. It prevents from saving invoice in DB
+    bool no_r_preimage = 21 [json_name = "no_r_preimage"];
 }
+
 message AddInvoiceResponse {
     bytes r_hash = 1 [json_name = "r_hash"];
 
@@ -1955,4 +1960,13 @@ message ForwardingHistoryResponse {
 
    /// The index of the last time in the set of returned forwarding events. Can be used to seek further, pagination style.
    uint32 last_offset_index = 2 [json_name = "last_offset_index"];
+}
+
+message DynamicInvoiceRequest {
+    bytes r_hash = 1;
+}
+
+message DynamicInvoiceResponse {
+    bytes r_hash = 1;
+    Invoice invoice = 2;
 }

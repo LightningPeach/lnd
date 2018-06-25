@@ -11840,8 +11840,8 @@ func testRouteFeeCutoff(net *lntest.NetworkHarness, t *harnessTest) {
 // closed.
 func testSendUpdateDisableChannel(net *lntest.NetworkHarness, t *harnessTest) {
 	const (
-		chanAmt = 100000
-		timeout = 10 * time.Second
+		chanAmt= 100000
+		timeout= 10 * time.Second
 	)
 
 	// Open a channel between Alice and Bob and Alice and Carol. These will
@@ -12106,6 +12106,103 @@ func testAbandonChannel(net *lntest.NetworkHarness, t *harnessTest) {
 	closeChannelAndAssert(ctxt, t, net, net.Bob, chanPoint, true)
 }
 
+// testDynamicInvoices performs a test exercising dynamic invoice creation
+// when node does not know preimage and asks some other service for invoice for
+// a given rhash
+func testDynamicInvoices(net *lntest.NetworkHarness, t *harnessTest) {
+	timeout := time.Duration(time.Second * 5)
+	ctxb := context.Background()
+	chErr := make(chan error, 3)
+
+
+	chanAmt := maxBtcFundingAmount
+	pushAmt := btcutil.Amount(100000)
+
+	ctxt, _ := context.WithTimeout(ctxb, timeout)
+	chanPoint := openChannelAndAssert(
+		ctxt, t, net, net.Alice, net.Bob,
+		lntest.OpenChannelParams{
+			Amt: chanAmt,
+			PushAmt: pushAmt,
+			Private: false,
+		},
+	)
+
+	var preImg [32]byte
+	copy(preImg[:], []byte{11, 21, 31})
+	rHash := sha256.Sum256(preImg[:])
+	sendReq := &lnrpc.SendRequest{
+		Amt:         1000,
+		Dest:        net.Bob.PubKey[:],
+		PaymentHash: rHash[:],
+		FinalCltvDelta: 1000,
+	}
+	sendResp, err := net.Alice.SendPaymentSync(ctxb, sendReq)
+	if err != nil {
+		t.Fatalf("cannot send payment", err)
+	}
+	if sendResp.PaymentError == "" {
+		t.Fatalf("payment should fail for unknown hash")
+	}
+
+	stream, err := net.Bob.SubscribeDynamicInvoices(ctxb)
+	if err != nil {
+		t.Fatalf("cannot subscribe to  dynamic invoice ")
+	}
+	defer stream.CloseSend()
+	go func() {
+		for {
+			invReq, err := stream.Recv()
+			if err != nil {
+				if err != io.EOF {
+					chErr <- err
+				}
+				return
+			}
+			var invResp lnrpc.DynamicInvoiceResponse
+			var inv *lnrpc.Invoice
+			if bytes.Equal(invReq.RHash, rHash[:]) {
+				inv = &lnrpc.Invoice{
+					RHash: rHash[:],
+					RPreimage: preImg[:],
+					Value: 1000,
+					CltvExpiry: 1000,
+				}
+			}
+			invResp.RHash = invReq.RHash
+			invResp.Invoice = inv
+			err = stream.Send(&invResp)
+			if err != nil {
+				if err != io.EOF {
+					chErr <- fmt.Errorf("cannot send response: %v", err)
+				}
+			}
+		}
+	}()
+	sendResp2, err := net.Alice.SendPaymentSync(ctxb, sendReq)
+	if err != nil {
+		t.Fatalf("cannot send payment", err)
+	}
+	if sendResp2.PaymentError != "" {
+		t.Fatalf("error sending payment: %v", sendResp2.PaymentError)
+	}
+	if !bytes.Equal(sendResp2.PaymentPreimage, preImg[:]) {
+		t.Fatalf("incorrect preimage in payment")
+	}
+
+	// Finally, immediately close the channel. This function will also
+	// block until the channel is closed and will additionally assert the
+	// relevant channel closing post conditions.
+	ctxt, _ = context.WithTimeout(ctxb, timeout)
+	closeChannelAndAssert(ctxt, t, net, net.Alice, chanPoint, false)
+
+	select {
+	case err := <-chErr:
+		t.Fatalf("error during test: %v", err)
+	default:
+	}
+}
+
 type testCase struct {
 	name string
 	test func(net *lntest.NetworkHarness, t *harnessTest)
@@ -12320,6 +12417,10 @@ var testsCases = []*testCase{
 	{
 		name: "send update disable channel",
 		test: testSendUpdateDisableChannel,
+	},
+	{
+		name: "dynamic invoices",
+		test: testDynamicInvoices,
 	},
 }
 

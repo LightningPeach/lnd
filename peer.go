@@ -26,6 +26,7 @@ import (
 	"github.com/lightningnetwork/lnd/lnwallet"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/ticker"
+	"context"
 )
 
 var (
@@ -572,6 +573,12 @@ func (p *peer) addLink(chanPoint *wire.OutPoint,
 		UnsafeReplay:        cfg.UnsafeReplay,
 		MinFeeUpdateTimeout: htlcswitch.DefaultMinLinkFeeUpdateTimeout,
 		MaxFeeUpdateTimeout: htlcswitch.DefaultMaxLinkFeeUpdateTimeout,
+		DiManager: p.server.diManager,
+		AddInvoiceFunc: func(inv *lnrpc.Invoice) error {
+			ctxb := context.Background()
+			_, err := p.server.rpcServ.AddInvoice(ctxb, inv)
+			return err
+		},
 	}
 
 	link := htlcswitch.NewChannelLink(linkCfg, lnChan)

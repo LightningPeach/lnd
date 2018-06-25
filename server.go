@@ -27,6 +27,7 @@ import (
 	"github.com/lightningnetwork/lnd/brontide"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/contractcourt"
+	"github.com/lightningnetwork/lnd/dimanager"
 	"github.com/lightningnetwork/lnd/discovery"
 	"github.com/lightningnetwork/lnd/htlcswitch"
 	"github.com/lightningnetwork/lnd/lncfg"
@@ -131,6 +132,10 @@ type server struct {
 	// prior peer has cleaned up successfully, before adding the new peer
 	// intended to replace it.
 	scheduledPeerConnection map[string]func()
+
+	// diManager controls creating dynamic invoices
+	diManager dimanager.DynamicInvoiceManager
+	rpcServ   *rpcServer
 
 	cc *chainControl
 
@@ -282,6 +287,8 @@ func newServer(listenAddrs []net.Addr, chanDB *channeldb.DB, cc *chainControl,
 		peerConnectedListeners: make(map[string][]chan<- lnpeer.Peer),
 		sentDisabled:           make(map[wire.OutPoint]bool),
 
+		diManager: dimanager.NewDynamicInvoiceManager(),
+
 		globalFeatures: lnwire.NewFeatureVector(globalFeatures,
 			lnwire.GlobalFeatures),
 		quit: make(chan struct{}),
@@ -342,6 +349,7 @@ func newServer(listenAddrs []net.Addr, chanDB *channeldb.DB, cc *chainControl,
 			htlcswitch.DefaultFwdEventInterval),
 		LogEventTicker: ticker.New(
 			htlcswitch.DefaultLogInterval),
+		DiManager:              s.diManager,
 	}, uint32(currentHeight))
 	if err != nil {
 		return nil, err
@@ -995,6 +1003,10 @@ func (s *server) Start() error {
 	// based on a channel's status.
 	s.wg.Add(1)
 	go s.watchChannelStatus()
+
+	if err := s.diManager.Start(); err != nil {
+		return err
+	}
 
 	return nil
 }

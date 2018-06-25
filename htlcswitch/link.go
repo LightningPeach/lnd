@@ -14,8 +14,10 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/contractcourt"
+	"github.com/lightningnetwork/lnd/dimanager"
 	"github.com/lightningnetwork/lnd/htlcswitch/hodl"
 	"github.com/lightningnetwork/lnd/lnpeer"
+	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnwallet"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/ticker"
@@ -226,6 +228,10 @@ type ChannelLinkConfig struct {
 	// fee rate. A random timeout will be selected between these values.
 	MinFeeUpdateTimeout time.Duration
 	MaxFeeUpdateTimeout time.Duration
+
+	DiManager dimanager.DynamicInvoiceManager
+	// TODO(mkl): find better solution than passing function
+	AddInvoiceFunc func(inv *lnrpc.Invoice) error
 }
 
 // channelLink is the service which drives a channel's commitment update
@@ -2287,9 +2293,22 @@ func (l *channelLink) processRemoteAdds(fwdPkg *channeldb.FwdPkg,
 			// we attempt to see if we have an invoice locally
 			// which'll allow us to settle this htlc.
 			invoiceHash := chainhash.Hash(pd.RHash)
-			invoice, minCltvDelta, err := l.cfg.Registry.LookupInvoice(
-				invoiceHash,
-			)
+
+			invoice, minCltvDelta, err := l.cfg.Registry.LookupInvoice(invoiceHash)
+			// Try to get invoice dynamically
+			if err != nil {
+				newInvoice, err1 := l.cfg.DiManager.GetInvoice(pd.RHash, time.Second)
+				if err1 == nil {
+					err2 := l.cfg.AddInvoiceFunc(newInvoice)
+					if err2 != nil {
+						log.Errorf("cannot add dynamically generated invoice: "+
+							" %v", err2)
+					} else {
+						invoice, minCltvDelta, err = l.cfg.Registry.LookupInvoice(invoiceHash)
+					}
+				}
+			}
+
 			if err != nil {
 				log.Errorf("unable to query invoice registry: "+
 					" %v", err)

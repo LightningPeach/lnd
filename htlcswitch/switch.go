@@ -17,6 +17,7 @@ import (
 	"github.com/lightningnetwork/lnd/chainntnfs"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/contractcourt"
+	"github.com/lightningnetwork/lnd/dimanager"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnwallet"
 	"github.com/lightningnetwork/lnd/lnwire"
@@ -176,6 +177,8 @@ type Config struct {
 	// LogEventTicker is a signal instructing the htlcswitch to log
 	// aggregate stats about it's forwarding during the last interval.
 	LogEventTicker ticker.Ticker
+
+	DiManager dimanager.DynamicInvoiceManager
 }
 
 // Switch is the central messaging bus for all incoming/outgoing HTLCs.

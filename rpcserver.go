@@ -25,6 +25,7 @@ import (
 	"github.com/coreos/bbolt"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/lightningnetwork/lnd/channeldb"
+	"github.com/lightningnetwork/lnd/dimanager"
 	"github.com/lightningnetwork/lnd/htlcswitch"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnwallet"
@@ -324,6 +325,10 @@ var (
 		"/lnrpc.Lightning/ForwardingHistory": {{
 			Entity: "offchain",
 			Action: "read",
+		}},
+		"/lnrpc.Lightning/SubscribeDynamicInvoices": {{
+			Entity: "invoices",
+			Action: "write",
 		}},
 	}
 )
@@ -2522,12 +2527,20 @@ func (r *rpcServer) AddInvoice(ctx context.Context,
 	var paymentPreimage [32]byte
 
 	switch {
+	case len(invoice.RPreimage) > 0 && invoice.NoRPreimage:
+		return nil, fmt.Errorf("payment preimage and NoRPreimage cannot" +
+			" be specified at the same time")
+
 	// If a preimage wasn't specified, then we'll generate a new preimage
 	// from fresh cryptographic randomness.
-	case len(invoice.RPreimage) == 0:
+	case len(invoice.RPreimage) == 0 && !invoice.NoRPreimage:
 		if _, err := rand.Read(paymentPreimage[:]); err != nil {
 			return nil, err
 		}
+
+	case len(invoice.RHash) != 32 && invoice.NoRPreimage:
+		return nil, fmt.Errorf("in NoRPreimage node RHash should be specified" +
+			" and be exactly 32 bytes")
 
 	// Otherwise, if a preimage was specified, then it MUST be exactly
 	// 32-bytes.
@@ -2572,9 +2585,15 @@ func (r *rpcServer) AddInvoice(ctx context.Context,
 			"payment allowed is %v", amt, maxPaymentMSat.ToSatoshis())
 	}
 
+	var rHash [32]byte
 	// Next, generate the payment hash itself from the preimage. This will
 	// be used by clients to query for the state of a particular invoice.
-	rHash := sha256.Sum256(paymentPreimage[:])
+	// Or copy it from invoice if NoRPreimage mode
+	if !invoice.NoRPreimage {
+		rHash = sha256.Sum256(paymentPreimage[:])
+	} else {
+		copy(rHash[:], invoice.RHash)
+	}
 
 	// We also create an encoded payment request which allows the
 	// caller to compactly send the invoice to the payer. We'll create a
@@ -2791,10 +2810,12 @@ func (r *rpcServer) AddInvoice(ctx context.Context,
 		}),
 	)
 
-	// With all sanity checks passed, write the invoice to the database.
-	addIndex, err := r.server.invoices.AddInvoice(newInvoice)
-	if err != nil {
-		return nil, err
+	var addIndex uint64
+	if !invoice.NoRPreimage {
+		// With all sanity checks passed, write the invoice to the database.
+		if addIndex, err = r.server.invoices.AddInvoice(newInvoice); err != nil {
+			return nil, err
+		}
 	}
 
 	return &lnrpc.AddInvoiceResponse{
@@ -4180,4 +4201,64 @@ func (r *rpcServer) ForwardingHistory(ctx context.Context,
 	}
 
 	return resp, nil
+}
+
+func (r *rpcServer) SubscribeDynamicInvoices(stream lnrpc.Lightning_SubscribeDynamicInvoicesServer) error {
+	chQuit := make(chan struct{})
+	chRHash := make(chan [32]byte)
+	chInvRez := make(chan *dimanager.InvoiceResult)
+	go func() {
+		for {
+			select {
+			case <-chQuit:
+				return
+			case rHash, ok := <-chRHash:
+				if !ok {
+					// TODO(mkl): is it safe
+					close(chQuit)
+				}
+				invReq := &lnrpc.DynamicInvoiceRequest{
+					RHash: rHash[:],
+				}
+				if err := stream.Send(invReq); err != nil {
+					close(chQuit)
+				}
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			select {
+			case <-chQuit:
+				return
+			default:
+			}
+			diResp, err := stream.Recv()
+			if err != nil {
+				close(chQuit)
+			} else {
+				var rHash [32]byte
+				copy(rHash[:], diResp.RHash)
+				invRez := &dimanager.InvoiceResult{
+					RHash:   rHash,
+					Invoice: diResp.Invoice,
+				}
+				chInvRez <- invRez
+			}
+		}
+	}()
+
+	handler := &dimanager.Handler{
+		ChRHash:   chRHash,
+		ChInvoice: chInvRez,
+	}
+	handlerId, err := r.server.diManager.RegisterHandler(handler)
+	if err != nil {
+		return fmt.Errorf("cannot register dynamic invoice handler: %v", err)
+	}
+	defer r.server.diManager.UnregisterHandler(handlerId)
+
+	<-chQuit
+	return nil
 }
