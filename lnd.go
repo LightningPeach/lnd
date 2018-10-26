@@ -356,7 +356,7 @@ func lndMain() error {
 	}
 
 	// Finally, start the REST proxy for our gRPC server above.
-	mux := proxy.NewServeMux()
+	mux := proxy.NewServeMux(proxy.WithMarshalerOption(proxy.MIMEWildcard, &proxy.JSONPb{OrigName: true, EmitDefaults: true}))
 	err = lnrpc.RegisterLightningHandlerFromEndpoint(
 		ctx, mux, cfg.RPCListeners[0].String(), proxyOpts,
 	)
