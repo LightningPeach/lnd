@@ -11,26 +11,22 @@ pipeline {
         checkout scm
       }
     }
-    stage('Buld Image') {
+    stage('Build Image') {
       steps {
         script {
-          def secrets = [
-            [$class: 'VaultSecret', path: 'secret/jenkins/dockerhub', secretValues: [
-              [$class: 'VaultSecretValue', envVar: 'duser', vaultKey: 'user'],
-              [$class: 'VaultSecretValue', envVar: 'dpass', vaultKey: 'password']]]
-            ]
+          sh '''
+            LOGIN=$(vault kv get -format=json secret/jenkins/dockerhub | jq .data.data)
+            USER=$(echo $LOGIN | jq -r .user)
+            PASS=$(echo $LOGIN | jq -r .password)
+            docker login --username $USER --password $PASS
+          '''
 
-            wrap([$class: 'VaultBuildWrapper', vaultSecrets: secrets]) {
-              sh 'docker login --username $duser --password $dpass'
-            }
-
-            sh 'docker build -t lightningpeach/lnd:$BRANCH_NAME-$BUILD_NUMBER .'
-            sh 'docker tag lightningpeach/lnd:$BRANCH_NAME-$BUILD_NUMBER lightningpeach/lnd:$BRANCH_NAME-$BUILD_NUMBER'
-            sh 'docker tag lightningpeach/lnd:$BRANCH_NAME-$BUILD_NUMBER lightningpeach/lnd:latest'
-          }
-
+          sh 'docker build -t lnd:$BRANCH_NAME-$BUILD_NUMBER .'
+          sh 'docker tag lnd:$BRANCH_NAME-$BUILD_NUMBER lightningpeach/lnd:$BRANCH_NAME-$BUILD_NUMBER'
+          sh 'docker tag lnd:$BRANCH_NAME-$BUILD_NUMBER lightningpeach/lnd:latest'
         }
       }
+    }
       stage('Push Image') {
         steps {
           sh 'docker push lightningpeach/lnd:$BRANCH_NAME-$BUILD_NUMBER'
