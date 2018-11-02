@@ -1,0 +1,1 @@
+PATH="/usr/local/opt/go@1.10/bin":/Users/evgeniyscherbina/go/src/github.com/lightningnetwork/lnd/protoc/bin:$PATH ./gen_protos.sh
