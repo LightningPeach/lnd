@@ -8,8 +8,9 @@ ENV GODEBUG netdns=cgo
 RUN apk add --no-cache \
     git \
     make \
-&&  git clone https://github.com/lightningnetwork/lnd /go/src/github.com/lightningnetwork/lnd \
+&&  git clone https://github.com/LightningPeach/lnd /go/src/github.com/lightningnetwork/lnd \
 &&  cd /go/src/github.com/lightningnetwork/lnd \
+&&  git checkout wallet \
 &&  make \
 &&  make install
 
