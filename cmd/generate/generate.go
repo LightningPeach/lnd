@@ -38,6 +38,8 @@ func main() {
 	dir := flag.String("dir", "neutrino", dirHelp)
 	flag.Parse()
 
+	checkErr(os.MkdirAll(*dir, 0755))
+
 	db, err := walletdb.Create("bdb", filepath.Join(*dir, neutrinoDBFilename))
 	checkErr(err)
 
