@@ -42,7 +42,7 @@ func main() {
 	checkErr(err)
 
 	cfg := neutrino.Config{
-		DataDir:         "neutrino",
+		DataDir:         *dir,
 		Database:        db,
 		ChainParams:     chaincfg.TestNet3Params,
 		ConnectPeers:    []string{"testnetwallet.lightningpeach.com:18333"},
