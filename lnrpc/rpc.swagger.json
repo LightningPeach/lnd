@@ -1470,6 +1470,9 @@
         }
       }
     },
+    "lnrpcCloseChannelBreachResponse": {
+      "type": "object"
+    },
     "lnrpcCloseStatusUpdate": {
       "type": "object",
       "properties": {

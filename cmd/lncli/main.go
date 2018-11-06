@@ -291,6 +291,7 @@ func main() {
 		updateChannelPolicyCommand,
 		forwardingHistoryCommand,
 		channelStateSnapshotCommand,
+		closeChannelBreachCommand,
 	}
 
 	if err := app.Run(os.Args); err != nil {

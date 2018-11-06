@@ -328,7 +328,7 @@ var (
 		}},
 	}
 
-	previousSignedMsgTx *wire.MsgTx
+	localForceCloseSummary *lnwallet.LocalForceCloseSummary
 )
 
 // rpcServer is a gRPC, RPC front end to the lnd daemon.
@@ -4364,7 +4364,6 @@ func (r *rpcServer) ChannelStateSnapshot(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	previousSignedMsgTx = commitTx.Copy()
 
 	localCommitment := channel.GetChannelState().LocalCommitment
 	summary, err := lnwallet.NewLocalForceCloseSummary(channel.GetChannelState(),
@@ -4372,6 +4371,7 @@ func (r *rpcServer) ChannelStateSnapshot(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+	localForceCloseSummary = summary
 
 	w := &bytes.Buffer{}
 	if err := summary.CloseTx.Serialize(w); err != nil {
@@ -4380,4 +4380,15 @@ func (r *rpcServer) ChannelStateSnapshot(ctx context.Context,
 	return &lnrpc.ChannelStateSnapshotResponse{
 		Transaction: hex.EncodeToString(w.Bytes()),
 	}, nil
+}
+
+func (r *rpcServer) CloseChannelBreach(ctx context.Context,
+	in *lnrpc.CloseChannelBreachRequest) (*lnrpc.CloseChannelBreachResponse, error) {
+	rpcsLog.Debug("[closechannelbreach]")
+
+	if err := r.server.cc.wallet.PublishTransaction(localForceCloseSummary.CloseTx); err != nil {
+		return nil, err
+	}
+
+	return &lnrpc.CloseChannelBreachResponse{}, nil
 }

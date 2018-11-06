@@ -647,7 +647,7 @@ service Lightning {
     };
 
     rpc ChannelStateSnapshot(ChannelStateSnapshotRequest) returns (ChannelStateSnapshotResponse) {};
-    // rpc CloseChannelBreach(CloseChannelBreachRequest) returns (CloseChannelBreachResponse) {};
+    rpc CloseChannelBreach(CloseChannelBreachRequest) returns (CloseChannelBreachResponse) {};
 }
 
 message Transaction {
@@ -1990,8 +1990,8 @@ message ChannelStateSnapshotResponse {
     string transaction = 1;
 }
 
-//message CloseChannelBreachRequest {
-//    ChannelPoint channel_point = 1;
-//}
-//message CloseChannelBreachResponse {
-//}
+message CloseChannelBreachRequest {
+    SimpleChannelPoint simple_channel_point = 1;
+}
+message CloseChannelBreachResponse {
+}
