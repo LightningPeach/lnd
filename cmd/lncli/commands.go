@@ -3292,7 +3292,8 @@ func forwardingHistory(ctx *cli.Context) error {
 }
 
 var channelStateSnapshotCommand = cli.Command{
-	Name: "channelstatesnapshot",
+	Name:        "channelstatesnapshot",
+	Description: "make copy of current commitment tx and save in memory",
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  "funding_txid",
@@ -3302,6 +3303,10 @@ var channelStateSnapshotCommand = cli.Command{
 			Name: "output_index",
 			Usage: "the output index for the funding output of the funding " +
 				"transaction",
+		},
+		cli.BoolFlag{
+			Name:  "show",
+			Usage: "if set shows encoded signed commitment tx",
 		},
 	},
 	Action: channelStateSnapshot,
@@ -3327,12 +3332,15 @@ func channelStateSnapshot(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Println(resp.Transaction)
+	if ctx.Bool("show") {
+		fmt.Println(resp.Transaction)
+	}
 	return nil
 }
 
 var closeChannelBreachCommand = cli.Command{
-	Name: "closechannelbreach",
+	Name:        "closechannelbreach",
+	Description: "publish latest saved commitment tx, if does not exist may panic",
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  "funding_txid",
