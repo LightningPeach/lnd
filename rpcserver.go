@@ -327,6 +327,8 @@ var (
 			Action: "read",
 		}},
 	}
+
+	previousSignedMsgTx *wire.MsgTx
 )
 
 // rpcServer is a gRPC, RPC front end to the lnd daemon.
@@ -4339,4 +4341,43 @@ func (r *rpcServer) ForwardingHistory(ctx context.Context,
 	}
 
 	return resp, nil
+}
+
+func (r *rpcServer) ChannelStateSnapshot(ctx context.Context,
+	in *lnrpc.ChannelStateSnapshotRequest) (*lnrpc.ChannelStateSnapshotResponse, error) {
+	rpcsLog.Debug("[channelstatesnapshot]")
+
+	fundingOutputIndex := in.SimpleChannelPoint.OutputIndex
+	fundingTxid, err := chainhash.NewHash(in.SimpleChannelPoint.FundingTxidBytes)
+	if err != nil {
+		rpcsLog.Errorf("[channelstatesnapshot] invalid funding txid: %v\n", err)
+		return nil, err
+	}
+	fundingOutPoint := wire.NewOutPoint(fundingTxid, fundingOutputIndex)
+
+	channel, err := r.fetchActiveChannel(*fundingOutPoint)
+	if err != nil {
+		return nil, err
+	}
+
+	commitTx, err := channel.GetSignedCommitTx()
+	if err != nil {
+		return nil, err
+	}
+	previousSignedMsgTx = commitTx.Copy()
+
+	localCommitment := channel.GetChannelState().LocalCommitment
+	summary, err := lnwallet.NewLocalForceCloseSummary(channel.GetChannelState(),
+		channel.Signer, channel.GetPCache(), commitTx, localCommitment)
+	if err != nil {
+		return nil, err
+	}
+
+	w := &bytes.Buffer{}
+	if err := summary.CloseTx.Serialize(w); err != nil {
+		return nil, err
+	}
+	return &lnrpc.ChannelStateSnapshotResponse{
+		Transaction: hex.EncodeToString(w.Bytes()),
+	}, nil
 }

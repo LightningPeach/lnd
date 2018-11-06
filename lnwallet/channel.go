@@ -4960,6 +4960,22 @@ func (lc *LightningChannel) getSignedCommitTx() (*wire.MsgTx, error) {
 	return commitTx, nil
 }
 
+func (lc *LightningChannel) GetSignedCommitTx() (*wire.MsgTx, error) {
+	return lc.getSignedCommitTx()
+}
+
+func (lc *LightningChannel) GetChannelState() *channeldb.OpenChannel {
+	return lc.channelState
+}
+
+func (lc *LightningChannel) GetCurrentHeight() uint64 {
+	return lc.currentHeight
+}
+
+func (lc *LightningChannel) GetPCache() PreimageCache {
+	return lc.pCache
+}
+
 // CommitOutputResolution carries the necessary information required to allow
 // us to sweep our direct commitment output in the case that either party goes
 // to chain.

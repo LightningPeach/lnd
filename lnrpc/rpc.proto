@@ -645,6 +645,9 @@ service Lightning {
             body: "*"
         };
     };
+
+    rpc ChannelStateSnapshot(ChannelStateSnapshotRequest) returns (ChannelStateSnapshotResponse) {};
+    // rpc CloseChannelBreach(CloseChannelBreachRequest) returns (CloseChannelBreachResponse) {};
 }
 
 message Transaction {
@@ -1971,3 +1974,24 @@ message ForwardingHistoryResponse {
    /// The index of the last time in the set of returned forwarding events. Can be used to seek further, pagination style.
    uint32 last_offset_index = 2 [json_name = "last_offset_index"];
 }
+
+message SimpleChannelPoint {
+    /// Txid of the funding transaction
+    bytes funding_txid_bytes = 1 [json_name = "funding_txid_bytes"];
+
+    /// The index of the output of the funding transaction
+    uint32 output_index = 3 [json_name = "output_index"];
+}
+
+message ChannelStateSnapshotRequest {
+    SimpleChannelPoint simple_channel_point = 1;
+}
+message ChannelStateSnapshotResponse {
+    string transaction = 1;
+}
+
+//message CloseChannelBreachRequest {
+//    ChannelPoint channel_point = 1;
+//}
+//message CloseChannelBreachResponse {
+//}

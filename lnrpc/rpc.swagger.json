@@ -1462,6 +1462,14 @@
         }
       }
     },
+    "lnrpcChannelStateSnapshotResponse": {
+      "type": "object",
+      "properties": {
+        "transaction": {
+          "type": "string"
+        }
+      }
+    },
     "lnrpcCloseStatusUpdate": {
       "type": "object",
       "properties": {
