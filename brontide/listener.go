@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/armon/go-proxyproto"
 )
 
 // defaultHandshakes is the maximum number of handshakes that can be done in
@@ -22,7 +23,7 @@ const defaultHandshakes = 1000
 type Listener struct {
 	localStatic *btcec.PrivateKey
 
-	tcp *net.TCPListener
+	tcp *proxyproto.Listener
 
 	handshakeSema chan struct{}
 	conns         chan maybeConn
@@ -46,9 +47,10 @@ func NewListener(localStatic *btcec.PrivateKey, listenAddr string) (*Listener,
 		return nil, err
 	}
 
+	proxyListener := &proxyproto.Listener{Listener: l}
 	brontideListener := &Listener{
 		localStatic:   localStatic,
-		tcp:           l,
+		tcp:           proxyListener,
 		handshakeSema: make(chan struct{}, defaultHandshakes),
 		conns:         make(chan maybeConn),
 		quit:          make(chan struct{}),
