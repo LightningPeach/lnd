@@ -285,7 +285,7 @@ type Switch struct {
 // New creates the new instance of htlc switch.
 func New(cfg Config, currentHeight uint32) (*Switch, error) {
 	circuitMap, err := NewCircuitMap(&CircuitMapConfig{
-		DB: cfg.DB,
+		DB:                    cfg.DB,
 		ExtractErrorEncrypter: cfg.ExtractErrorEncrypter,
 	})
 	if err != nil {
@@ -1674,7 +1674,7 @@ out:
 
 			// Otherwise, we'll log this diff, then accumulate the
 			// new stats into the running total.
-			log.Infof("Sent %d satoshis and received %d satoshis "+
+			log.Debugf("Sent %d satoshis and received %d satoshis "+
 				"in the last 10 seconds (%f tx/sec)",
 				diffSatSent, diffSatRecv,
 				float64(diffNumUpdates)/10)
