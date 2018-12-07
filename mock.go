@@ -228,7 +228,7 @@ func (*mockWalletController) IsOurAddress(a btcutil.Address) bool {
 }
 
 func (*mockWalletController) SendOutputs(outputs []*wire.TxOut,
-	_ lnwallet.SatPerKWeight) (*chainhash.Hash, error) {
+	_ lnwallet.SatPerKWeight) (*wire.MsgTx, error) {
 
 	return nil, nil
 }

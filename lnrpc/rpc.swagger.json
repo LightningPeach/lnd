@@ -148,6 +148,38 @@
         ]
       }
     },
+    "/v1/channels/abandon/{channel_point.funding_txid_str}/{channel_point.output_index}": {
+      "delete": {
+        "summary": "* lncli: `abandonchannel`\nAbandonChannel removes all channel state from the database except for a\nclose summary. This method can be used to get rid of permanently unusable\nchannels due to bugs fixed in newer versions of lnd. Only available\nwhen in debug builds of lnd.",
+        "operationId": "AbandonChannel",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/lnrpcAbandonChannelResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "channel_point.funding_txid_str",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "channel_point.output_index",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "Lightning"
+        ]
+      }
+    },
     "/v1/channels/closed": {
       "get": {
         "summary": "* lncli: `closedchannels`\nClosedChannels returns a description of all the closed channels that \nthis node was a participant in.",
@@ -273,38 +305,6 @@
             "schema": {
               "$ref": "#/definitions/lnrpcSendToRouteRequest"
             }
-          }
-        ],
-        "tags": [
-          "Lightning"
-        ]
-      }
-    },
-    "/v1/channels/{channel_point.funding_txid_str}/{channel_point.output_index}": {
-      "delete": {
-        "summary": "* lncli: `abandonchannel`\nAbandonChannel removes all channel state from the database except for a\nclose summary. This method can be used to get rid of permanently unusable\nchannels due to bugs fixed in newer versions of lnd. Only available\nwhen in debug builds of lnd.",
-        "operationId": "AbandonChannel",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/lnrpcAbandonChannelResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "channel_point.funding_txid_str",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "channel_point.output_index",
-            "in": "path",
-            "required": true,
-            "type": "integer",
-            "format": "int64"
           }
         ],
         "tags": [
@@ -1911,6 +1911,11 @@
         "version": {
           "type": "string",
           "description": "/ The version of the LND software that the node is running."
+        },
+        "num_inactive_channels": {
+          "type": "integer",
+          "format": "int64",
+          "title": "/ Number of inactive channels"
         }
       }
     },
@@ -1989,6 +1994,10 @@
         "fee_msat": {
           "type": "string",
           "format": "int64"
+        },
+        "pub_key": {
+          "type": "string",
+          "description": "*\nAn optional public key of the hop. If the public key is given, the payment\ncan be executed without relying on a copy of the channel graph."
         }
       }
     },

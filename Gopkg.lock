@@ -106,7 +106,7 @@
   revision = "ab6388e0c60ae4834a1f57511e20c17b5f78be4b"
 
 [[projects]]
-  digest = "1:ac01796bf202b80d6cb1b92d42df0fbbf3aff964451376bfa7c39bc2bf94d108"
+  digest = "1:cada140f48c07269d60b507af4e57abc0cf1f47c1f63bafc7bffd2649eb8cefe"
   name = "github.com/btcsuite/btcwallet"
   packages = [
     "chain",
@@ -123,10 +123,11 @@
     "wallet/txrules",
     "walletdb",
     "walletdb/bdb",
+    "walletdb/migration",
     "wtxmgr",
   ]
   pruneopts = "UT"
-  revision = "c4dd27e481f9801866cf5226bfe532084772ec2a"
+  revision = "7ad4f1e81d7831b5b4bc8597fe9db731fbb3be22"
 
 [[projects]]
   branch = "master"
