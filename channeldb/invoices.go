@@ -873,7 +873,7 @@ func settleInvoice(invoices, settleIndex *bolt.Bucket, invoiceNum []byte,
 	// Add idempotency to duplicate settles, return here to avoid
 	// overwriting the previous info.
 	if invoice.Terms.Settled {
-		return &invoice, nil
+		return nil, fmt.Errorf("invoice already settled")
 	}
 
 	// Now that we know the invoice hasn't already been settled, we'll

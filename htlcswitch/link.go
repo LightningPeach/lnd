@@ -2338,25 +2338,18 @@ func (l *channelLink) processRemoteAdds(fwdPkg *channeldb.FwdPkg,
 			}
 
 			// If the invoice is already settled, we choose to
-			// accept the payment to simplify failure recovery.
-			//
-			// NOTE: Though our recovery and forwarding logic is
-			// predominately batched, settling invoices happens
-			// iteratively. We may reject one of two payments
-			// for the same rhash at first, but then restart and
-			// reject both after seeing that the invoice has been
-			// settled. Without any record of which one settles
-			// first, it is ambiguous as to which one actually
-			// settled the invoice. Thus, by accepting all
-			// payments, we eliminate the race condition that can
-			// lead to this inconsistency.
-			//
-			// TODO(conner): track ownership of settlements to
-			// properly recover from failures? or add batch invoice
-			// settlement
+			// reject the payment.
 			if invoice.Terms.Settled {
-				log.Warnf("Accepting duplicate payment for "+
+				log.Errorf("Rejecting duplicate payment for "+
 					"hash=%x", pd.RHash[:])
+
+				failure := lnwire.FailInvoiceAlreadySettled{}
+				l.sendHTLCError(
+					pd.HtlcIndex, failure, obfuscator, pd.SourceRef,
+				)
+
+				needUpdate = true
+				continue
 			}
 
 			// If we're not currently in debug mode, and the

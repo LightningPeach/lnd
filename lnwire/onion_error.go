@@ -78,6 +78,7 @@ const (
 	CodeFinalIncorrectCltvExpiry      FailCode = 18
 	CodeFinalIncorrectHtlcAmount      FailCode = 19
 	CodeExpiryTooFar                  FailCode = 21
+	CodeInvoiceAlreadySettled         FailCode = 289
 )
 
 // String returns the string representation of the failure code.
@@ -148,6 +149,9 @@ func (c FailCode) String() string {
 
 	case CodeExpiryTooFar:
 		return "ExpiryTooFar"
+
+	case CodeInvoiceAlreadySettled:
+		return "InvoiceAlreadySettled"
 
 	default:
 		return "<unknown>"
@@ -1062,6 +1066,16 @@ func (f FailExpiryTooFar) Error() string {
 	return f.Code().String()
 }
 
+type FailInvoiceAlreadySettled struct{}
+
+func (f FailInvoiceAlreadySettled) Code() FailCode {
+	return CodeInvoiceAlreadySettled
+}
+
+func (f FailInvoiceAlreadySettled) Error() string {
+	return f.Code().String()
+}
+
 // DecodeFailure decodes, validates, and parses the lnwire onion failure, for
 // the provided protocol version.
 func DecodeFailure(r io.Reader, pver uint32) (FailureMessage, error) {
@@ -1226,6 +1240,9 @@ func makeEmptyOnionError(code FailCode) (FailureMessage, error) {
 
 	case CodeExpiryTooFar:
 		return &FailExpiryTooFar{}, nil
+
+	case CodeInvoiceAlreadySettled:
+		return &FailInvoiceAlreadySettled{}, nil
 
 	default:
 		return nil, errors.Errorf("unknown error code: %v", code)
