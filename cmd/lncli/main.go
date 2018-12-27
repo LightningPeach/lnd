@@ -6,6 +6,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/LightningPeach/lnd/lncfg"
 	"io/ioutil"
 	"os"
 	"os/user"
@@ -26,6 +27,7 @@ import (
 const (
 	defaultTLSCertFilename  = "tls.cert"
 	defaultMacaroonFilename = "admin.macaroon"
+	defaultRPCPort          = "10009"
 )
 
 var (
@@ -36,6 +38,10 @@ var (
 	defaultLndDir       = btcutil.AppDataDir("lnd", false)
 	defaultTLSCertPath  = filepath.Join(defaultLndDir, defaultTLSCertFilename)
 	defaultMacaroonPath = filepath.Join(defaultLndDir, defaultMacaroonFilename)
+
+	// maxMsgRecvSize is the largest message our client will receive. We
+	// set this to ~50Mb atm.
+	maxMsgRecvSize = grpc.MaxCallRecvMsgSize(1 * 1024 * 1024 * 50)
 )
 
 func fatal(err error) {
@@ -142,6 +148,11 @@ func getClientConn(ctx *cli.Context, skipMacaroons bool) *grpc.ClientConn {
 		cred := macaroons.NewMacaroonCredential(constrainedMac)
 		opts = append(opts, grpc.WithPerRPCCredentials(cred))
 	}
+
+	genericDialer := lncfg.ClientAddressDialer(defaultRPCPort)
+	opts = append(opts, grpc.WithDialer(genericDialer))
+	opts = append(opts, grpc.WithDefaultCallOptions(maxMsgRecvSize))
+
 
 	conn, err := grpc.Dial(ctx.GlobalString("rpcserver"), opts...)
 	if err != nil {
