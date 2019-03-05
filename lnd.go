@@ -524,9 +524,11 @@ func genCertPair(certFile, keyFile string) error {
 	}
 
 	// Add extra IP to the slice.
-	ipAddr := net.ParseIP(cfg.TLSExtraIP)
-	if ipAddr != nil {
-		addIP(ipAddr)
+	for _, ip := range cfg.TLSExtraIP {
+		ipAddr := net.ParseIP(ip)
+		if ipAddr != nil {
+			addIP(ipAddr)
+		}
 	}
 
 	// Collect the host's names into a slice.
@@ -538,8 +540,8 @@ func genCertPair(certFile, keyFile string) error {
 	if host != "localhost" {
 		dnsNames = append(dnsNames, "localhost")
 	}
-	if cfg.TLSExtraDomain != "" {
-		dnsNames = append(dnsNames, cfg.TLSExtraDomain)
+	for _, d := range cfg.TLSExtraDomain {
+		dnsNames = append(dnsNames, d)
 	}
 
 	// Also add fake hostnames for unix sockets, otherwise hostname
