@@ -44,6 +44,7 @@ const (
 	defaultLogFilename         = "lnd.log"
 	defaultRPCPort             = 10009
 	defaultRESTPort            = 8080
+	defaultPrometheusPort      = 8081
 	defaultPeerPort            = 9735
 	defaultRPCHost             = "localhost"
 	defaultMaxPendingChannels  = 1
@@ -201,6 +202,9 @@ type config struct {
 	CPUProfile string `long:"cpuprofile" description:"Write CPU profile to the specified file"`
 
 	Profile string `long:"profile" description:"Enable HTTP profiling on given port -- NOTE port must be between 1024 and 65535"`
+
+	RawPrometheusIPs []string `long:"prometheusip" description:"Add an ip:port to the list of local addresses we claim to listen for Prometheus monitoring. If a port is not specified, the default (8081) will be used. If not specified exports are disabled, but metrics are still collected internally"`
+	PrometheusIPs    []net.Addr
 
 	DebugHTLC          bool `long:"debughtlc" description:"Activate the debug htlc mode. With the debug HTLC mode, all payments sent use a pre-determined R-Hash. Additionally, all HTLCs sent to a node with the debug HTLC R-Hash are immediately settled in the next available state transition."`
 	UnsafeDisconnect   bool `long:"unsafe-disconnect" description:"Allows the rpcserver to intentionally disconnect from peers with open channels. USED FOR TESTING ONLY."`
@@ -786,6 +790,17 @@ func loadConfig() (*config, error) {
 		}
 	}
 
+	// Validate IP address/ports for Prometheus.
+	if len(cfg.RawPrometheusIPs) != 0 {
+		cfg.PrometheusIPs, err = lncfg.NormalizeAddresses(
+			cfg.RawPrometheusIPs, strconv.Itoa(defaultPrometheusPort),
+			cfg.net.ResolveTCPAddr,
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// We'll now construct the network directory which will be where we
 	// store all the data specifc to this chain/network.
 	networkDir = filepath.Join(
@@ -936,8 +951,8 @@ func loadConfig() (*config, error) {
 		}
 	}
 
-	// Finally, ensure that we are only listening on localhost if Tor
-	// inbound support is enabled.
+	// Ensure that we are only listening on localhost if Tor inbound support
+	// is enabled.
 	if cfg.Tor.V2 || cfg.Tor.V3 {
 		for _, addr := range cfg.Listeners {
 			if lncfg.IsLoopback(addr.String()) {
@@ -948,6 +963,14 @@ func loadConfig() (*config, error) {
 				"on localhost when running with Tor inbound " +
 				"support enabled")
 		}
+	}
+
+	// Finally, ensure that the user's color is correctly formatted,
+	// otherwise the server will not be able to start after the unlocking
+	// the wallet.
+	_, err = parseHexColor(cfg.Color)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to parse node color: %v", err)
 	}
 
 	// Warn about missing config file only after all other configuration is

@@ -17,6 +17,7 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/davecgh/go-spew/spew"
 
+	"context"
 	"github.com/lightningnetwork/lnd/brontide"
 	"github.com/lightningnetwork/lnd/chainntnfs"
 	"github.com/lightningnetwork/lnd/channeldb"
@@ -27,7 +28,8 @@ import (
 	"github.com/lightningnetwork/lnd/lnwallet"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/ticker"
-	"context"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 var (
@@ -577,7 +579,7 @@ func (p *peer) addLink(chanPoint *wire.OutPoint,
 		UnsafeReplay:        cfg.UnsafeReplay,
 		MinFeeUpdateTimeout: htlcswitch.DefaultMinLinkFeeUpdateTimeout,
 		MaxFeeUpdateTimeout: htlcswitch.DefaultMaxLinkFeeUpdateTimeout,
-		DiManager: p.server.diManager,
+		DiManager:           p.server.diManager,
 		AddInvoiceFunc: func(inv *lnrpc.Invoice) error {
 			ctxb := context.Background()
 			_, err := p.server.rpcServ.AddInvoice(ctxb, inv)
@@ -664,6 +666,8 @@ func (p *peer) readNextMessage() (lnwire.Message, error) {
 	}
 
 	p.logWireMessage(nextMsg, true)
+
+	wireMessageReceivedCounter.WithLabelValues(messageTypeString(nextMsg)).Inc()
 
 	return nextMsg, nil
 }
@@ -1344,6 +1348,23 @@ func (p *peer) logWireMessage(msg lnwire.Message, read bool) {
 	}))
 }
 
+// messageTypeString returns a human and monitoring-readable string that describes an
+// incoming/outgoing message type.
+func messageTypeString(msg lnwire.Message) string {
+	return msg.MsgType().String()
+}
+
+var (
+	wireMessageSentCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "lnd_wire_message_sent_by_type_count",
+		Help: "Total number of wire messages (to be sent) by type.",
+	}, []string{"type"})
+	wireMessageReceivedCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "lnd_wire_message_received_by_type_count",
+		Help: "Total number of wire messages received by type.",
+	}, []string{"type"})
+)
+
 // writeMessage writes the target lnwire.Message to the remote peer.
 func (p *peer) writeMessage(msg lnwire.Message) error {
 	// Simply exit if we're shutting down.
@@ -1352,6 +1373,8 @@ func (p *peer) writeMessage(msg lnwire.Message) error {
 	}
 
 	p.logWireMessage(msg, false)
+
+	wireMessageSentCounter.WithLabelValues(messageTypeString(msg)).Inc()
 
 	// We'll re-slice of static write buffer to allow this new message to
 	// utilize all available space. We also ensure we cap the capacity of

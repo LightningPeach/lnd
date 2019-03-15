@@ -20,11 +20,21 @@
 
 [[constraint]]
   name = "github.com/golang/protobuf"
-  revision = "bbd03ef6da3a115852eaf24c8a1c46aeb39aa175"
+  version = "v1.2.0"
+#  revision = "bbd03ef6da3a115852eaf24c8a1c46aeb39aa175"
 
 [[constraint]]
   name = "github.com/grpc-ecosystem/grpc-gateway"
   revision = "f2862b476edcef83412c7af8687c9cd8e4097c0f"
+
+[[constraint]]
+  name = "github.com/grpc-ecosystem/go-grpc-middleware"
+  source = "git@github.com:vapopov/go-grpc-middleware"
+  branch = "master"
+
+[[constraint]]
+  name = "github.com/grpc-ecosystem/go-grpc-prometheus"
+  revision = "39de4380c2e0353a115b80b1c730719c79bfb771"
 
 [[constraint]]
   name = "github.com/jackpal/go-nat-pmp"
@@ -52,11 +62,17 @@
 
 [[constraint]]
   name = "github.com/ltcsuite/ltcd"
-  revision = "cdab10132e8c6e4a3ffd112dba54791946d28906"
+  branch = "master"
+  #revision = "cdab10132e8c6e4a3ffd112dba54791946d28906"
 
 [[constraint]]
   name = "github.com/miekg/dns"
   revision = "79bfde677fa81ff8d27c4330c35bda075d360641"
+
+[[constraint]]
+  name = "github.com/prometheus/client_golang"
+  branch = "master"
+  # revision = "c5b7fccd204277076155f10851dad72b76a49317"
 
 [[constraint]]
   name = "github.com/NebulousLabs/go-upnp"
@@ -92,7 +108,8 @@
 
 [[constraint]]
   name = "golang.org/x/net"
-  revision = "ae89d30ce0c63142b652837da33d782e2b0a9b25"
+  branch = "master"
+#  revision = "ae89d30ce0c63142b652837da33d782e2b0a9b25"
 
 [[override]]
   name = "golang.org/x/sys"

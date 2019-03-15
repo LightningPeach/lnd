@@ -26,6 +26,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/grpc-ecosystem/go-grpc-middleware"
+	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"gopkg.in/macaroon-bakery.v2/bakery"
 
 	"golang.org/x/net/context"
@@ -48,6 +50,7 @@ import (
 	"github.com/lightningnetwork/lnd/macaroons"
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/lightningnetwork/lnd/walletunlocker"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const (
@@ -136,6 +139,15 @@ func lndMain() error {
 			profileRedirect := http.RedirectHandler("/debug/pprof",
 				http.StatusSeeOther)
 			http.Handle("/", profileRedirect)
+			fmt.Println(http.ListenAndServe(listenAddr, nil))
+		}()
+	}
+
+	// Enable Prometheus monitoring if request.
+	for _, listenAddr := range cfg.RawPrometheusIPs {
+		go func() {
+			http.Handle("/metrics", promhttp.Handler())
+			// log.Fatal
 			fmt.Println(http.ListenAndServe(listenAddr, nil))
 		}()
 	}
@@ -312,14 +324,19 @@ func lndMain() error {
 		return err
 	}
 
+	var unaryInterceptors []grpc.UnaryServerInterceptor
+	var streamInterceptors []grpc.StreamServerInterceptor
+
 	// Check macaroon authentication if macaroons aren't disabled.
 	if macaroonService != nil {
-		serverOpts = append(serverOpts,
-			grpc.UnaryInterceptor(macaroonService.
-				UnaryServerInterceptor(permissions)),
-			grpc.StreamInterceptor(macaroonService.
-				StreamServerInterceptor(permissions)),
-		)
+		unaryInterceptors = append(unaryInterceptors,
+			//grpc.UnaryInterceptor(
+			macaroonService.
+				UnaryServerInterceptor(permissions))
+		streamInterceptors = append(streamInterceptors,
+			// grpc.StreamInterceptor(
+			macaroonService.
+				StreamServerInterceptor(permissions))
 	}
 
 	// Initialize, and register our implementation of the gRPC interface
@@ -331,6 +348,17 @@ func lndMain() error {
 	defer rpcServer.Stop()
 	server.rpcServ = rpcServer
 
+	if len(cfg.PrometheusIPs) != 0 {
+		exportPrometheusStats(server)
+
+		streamInterceptors = append(streamInterceptors, grpc_prometheus.StreamServerInterceptor)
+		unaryInterceptors = append(unaryInterceptors, grpc_prometheus.UnaryServerInterceptor)
+	}
+
+	serverOpts = append(serverOpts,
+		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(streamInterceptors...)),
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(unaryInterceptors...)),
+	)
 
 	grpcServer := grpc.NewServer(serverOpts...)
 	lnrpc.RegisterLightningServer(grpcServer, rpcServer)
@@ -357,6 +385,7 @@ func lndMain() error {
 		ctx, mux, cfg.RPCListeners[0].String(), proxyOpts,
 	)
 	if err != nil {
+		srvrLog.Errorf("unable to start RPC server: %v", err)
 		return err
 	}
 	for _, restEndpoint := range cfg.RESTListeners {
@@ -421,6 +450,8 @@ func lndMain() error {
 		return err
 	}
 	defer server.Stop()
+
+	grpc_prometheus.Register(grpcServer)
 
 	// Now that the server has started, if the autopilot mode is currently
 	// active, then we'll initialize a fresh instance of it and start it.
@@ -560,7 +591,7 @@ func genCertPair(certFile, keyFile string) error {
 
 		KeyUsage: x509.KeyUsageKeyEncipherment |
 			x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		IsCA:                  true, // so can sign self.
+		IsCA: true, // so can sign self.
 		BasicConstraintsValid: true,
 
 		DNSNames:    dnsNames,
@@ -604,9 +635,9 @@ func genCertPair(certFile, keyFile string) error {
 	return nil
 }
 
-// genMacaroons generates three macaroon files; one admin-level, one
-// for invoice access and one read-only. These can also be used
-// to generate more granular macaroons.
+// genMacaroons generates three macaroon files; one admin-level, one for
+// invoice access and one read-only. These can also be used to generate more
+// granular macaroons.
 func genMacaroons(ctx context.Context, svc *macaroons.Service,
 	admFile, roFile, invoiceFile string) error {
 

@@ -37,6 +37,10 @@ const (
 var (
 	defaultLndDir      = btcutil.AppDataDir("lnd", false)
 	defaultTLSCertPath = filepath.Join(defaultLndDir, defaultTLSCertFilename)
+
+	// maxMsgRecvSize is the largest message our client will receive. We
+	// set this to ~50Mb atm.
+	maxMsgRecvSize = grpc.MaxCallRecvMsgSize(1 * 1024 * 1024 * 50)
 )
 
 func fatal(err error) {
@@ -136,6 +140,7 @@ func getClientConn(ctx *cli.Context, skipMacaroons bool) *grpc.ClientConn {
 			lncfg.ClientAddressDialer(defaultRPCPort),
 		),
 	)
+	opts = append(opts, grpc.WithDefaultCallOptions(maxMsgRecvSize))
 	conn, err := grpc.Dial(ctx.GlobalString("rpcserver"), opts...)
 	if err != nil {
 		fatal(fmt.Errorf("unable to connect to RPC server: %v", err))

@@ -10,7 +10,7 @@
     "ghash",
     "internal/modes"
   ]
-  revision = "c0276d75487ef7aceab140c9eb31601dd7d18bd4"
+  revision = "e466e3c35f68a96448e3718906ca93c2eadcffe7"
 
 [[projects]]
   branch = "master"
@@ -54,7 +54,13 @@
   branch = "master"
   name = "github.com/armon/go-proxyproto"
   packages = ["."]
-  revision = "5b7edb60ff5f69b60d1950397f7bde6171f1807d"
+  revision = "68259f75880e8bcc207a49de82466957646af353"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/beorn7/perks"
+  packages = ["quantile"]
+  revision = "3a771d992973f24aa725d07868b467d1ddfceafb"
 
 [[projects]]
   name = "github.com/btcsuite/btcd"
@@ -173,7 +179,20 @@
     "ptypes/struct",
     "ptypes/timestamp"
   ]
-  revision = "bbd03ef6da3a115852eaf24c8a1c46aeb39aa175"
+  revision = "b5d812f8a3706043e23a9cd5babf2e5423744d30"
+  version = "v1.3.1"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/grpc-ecosystem/go-grpc-middleware"
+  packages = ["."]
+  revision = "b67237b69d6e3313227b8f279e2d0ff8b47fa827"
+  source = "git@github.com:vapopov/go-grpc-middleware"
+
+[[projects]]
+  name = "github.com/grpc-ecosystem/go-grpc-prometheus"
+  packages = ["."]
+  revision = "39de4380c2e0353a115b80b1c730719c79bfb771"
 
 [[projects]]
   name = "github.com/grpc-ecosystem/grpc-gateway"
@@ -209,7 +228,7 @@
   branch = "master"
   name = "github.com/juju/loggo"
   packages = ["."]
-  revision = "584905176618da46b895b176c721b02c476b6993"
+  revision = "d976af380377adda50b2d34279f1dec3507504ac"
 
 [[projects]]
   name = "github.com/kkdai/bstream"
@@ -240,13 +259,20 @@
   revision = "ac4d9da8f1d67c95f1fafdc65e1a4902d6f5a940"
 
 [[projects]]
+  branch = "master"
   name = "github.com/ltcsuite/ltcd"
   packages = [
     "chaincfg",
     "chaincfg/chainhash",
     "wire"
   ]
-  revision = "cdab10132e8c6e4a3ffd112dba54791946d28906"
+  revision = "73a7375350283b566410c09eaab46ff93aa79545"
+
+[[projects]]
+  name = "github.com/matttproud/golang_protobuf_extensions"
+  packages = ["pbutil"]
+  revision = "c12348ce28de40eed0136aa2b644d0ee0650e56c"
+  version = "v1.0.1"
 
 [[projects]]
   name = "github.com/miekg/dns"
@@ -258,9 +284,48 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/prometheus/client_golang"
+  packages = [
+    "prometheus",
+    "prometheus/internal",
+    "prometheus/promauto",
+    "prometheus/promhttp"
+  ]
+  revision = "fa4aa9000d2863904891d193dea354d23f3d712a"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prometheus/client_model"
+  packages = ["go"]
+  revision = "fd36f4220a901265f90734c3183c5f0c91daa0b8"
+
+[[projects]]
+  name = "github.com/prometheus/common"
+  packages = [
+    "expfmt",
+    "internal/bitbucket.org/ww/goautoneg",
+    "model"
+  ]
+  revision = "cfeb6f9992ffa54aaa4f2170ade4067ee478b250"
+  version = "v0.2.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prometheus/procfs"
+  packages = [
+    ".",
+    "internal/util",
+    "iostats",
+    "nfs",
+    "xfs"
+  ]
+  revision = "d0f344d83b0c80a1bc03b547a2374a9ec6711144"
+
+[[projects]]
   name = "github.com/rogpeppe/fastuuid"
   packages = ["."]
-  revision = "6724a57986aff9bff1a1770e9347036def7c89f6"
+  revision = "d61b6ae132d93dcb396be506396bf9a5127a41aa"
+  version = "v1.0.0"
 
 [[projects]]
   name = "github.com/tv42/zbase32"
@@ -294,21 +359,23 @@
   revision = "614d502a4dac94afa3a6ce146bd1736da82514c6"
 
 [[projects]]
+  branch = "master"
   name = "golang.org/x/net"
   packages = [
     "context",
     "html",
     "html/atom",
     "html/charset",
+    "http/httpguts",
     "http2",
     "http2/hpack",
     "idna",
+    "internal/socks",
     "internal/timeseries",
-    "lex/httplex",
     "proxy",
     "trace"
   ]
-  revision = "ae89d30ce0c63142b652837da33d782e2b0a9b25"
+  revision = "9f648a60d9775ef5c977e7669d1673a7a67bef33"
 
 [[projects]]
   name = "golang.org/x/sys"
@@ -419,6 +486,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a7184261a471d41e75a3d0449bfc0000d003328a7614afeb75e453783950fb45"
+  inputs-digest = "a188da61f214cdf8deb12e800e0cf28ef7b8dadd5da06a9ebf54c214eabaed69"
   solver-name = "gps-cdcl"
   solver-version = 1
