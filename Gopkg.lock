@@ -10,7 +10,7 @@
     "ghash",
     "internal/modes"
   ]
-  revision = "e466e3c35f68a96448e3718906ca93c2eadcffe7"
+  revision = "26d1add596b6d800bdeeb3bc3b2c7b316c056b6d"
 
 [[projects]]
   branch = "master"
@@ -173,11 +173,15 @@
     "jsonpb",
     "proto",
     "protoc-gen-go/descriptor",
+    "protoc-gen-go/generator",
+    "protoc-gen-go/generator/internal/remap",
+    "protoc-gen-go/plugin",
     "ptypes",
     "ptypes/any",
     "ptypes/duration",
     "ptypes/struct",
-    "ptypes/timestamp"
+    "ptypes/timestamp",
+    "ptypes/wrappers"
   ]
   revision = "b5d812f8a3706043e23a9cd5babf2e5423744d30"
   version = "v1.3.1"
@@ -197,11 +201,12 @@
 [[projects]]
   name = "github.com/grpc-ecosystem/grpc-gateway"
   packages = [
+    "internal",
     "runtime",
-    "runtime/internal",
     "utilities"
   ]
-  revision = "f2862b476edcef83412c7af8687c9cd8e4097c0f"
+  revision = "20f268a412e5b342ebfb1a0eef7c3b7bd6c260ea"
+  version = "v1.8.5"
 
 [[projects]]
   name = "github.com/jackpal/gateway"
@@ -319,7 +324,7 @@
     "nfs",
     "xfs"
   ]
-  revision = "d0f344d83b0c80a1bc03b547a2374a9ec6711144"
+  revision = "55ae3d9d557340b5bc24cd8aa5f6fa2c2ab31352"
 
 [[projects]]
   name = "github.com/rogpeppe/fastuuid"
@@ -375,7 +380,7 @@
     "proxy",
     "trace"
   ]
-  revision = "9f648a60d9775ef5c977e7669d1673a7a67bef33"
+  revision = "addf6b3196f61cd44ce5a76657913698c73479d0"
 
 [[projects]]
   name = "golang.org/x/sys"
@@ -428,7 +433,9 @@
   name = "google.golang.org/genproto"
   packages = [
     "googleapis/api/annotations",
-    "googleapis/rpc/status"
+    "googleapis/api/httpbody",
+    "googleapis/rpc/status",
+    "protobuf/field_mask"
   ]
   revision = "df60624c1e9b9d2973e889c7a1cff73155da81c4"
 
@@ -486,6 +493,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a188da61f214cdf8deb12e800e0cf28ef7b8dadd5da06a9ebf54c214eabaed69"
+  inputs-digest = "14fdb6dd98d3e61dc246f107dfef7d603a3f0b00f4105540cd5d5e68c3c1559d"
   solver-name = "gps-cdcl"
   solver-version = 1

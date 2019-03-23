@@ -25,7 +25,8 @@
 
 [[constraint]]
   name = "github.com/grpc-ecosystem/grpc-gateway"
-  revision = "f2862b476edcef83412c7af8687c9cd8e4097c0f"
+  version = "v1.8.5"
+#  revision = "f2862b476edcef83412c7af8687c9cd8e4097c0f"
 
 [[constraint]]
   name = "github.com/grpc-ecosystem/go-grpc-middleware"
