@@ -717,7 +717,7 @@ func (c *nodesCollector) Collect(ch chan<- prometheus.Metric) {
 
 	// TODO(baryluk): Nodes without channels.
 
-	err := graph.ForEachNode(nil, func(_ *bolt.Tx, node *channeldb.LightningNode) error {
+	err := graph.ForEachNode(nil, func(_ *bbolt.Tx, node *channeldb.LightningNode) error {
 		nodes++
 
 		if len(node.Addresses) == 0 {

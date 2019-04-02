@@ -135,12 +135,10 @@ func getClientConn(ctx *cli.Context, skipMacaroons bool) *grpc.ClientConn {
 
 	// We need to use a custom dialer so we can also connect to unix sockets
 	// and not just TCP addresses.
-	opts = append(
-		opts, grpc.WithDialer(
-			lncfg.ClientAddressDialer(defaultRPCPort),
-		),
-	)
+	genericDialer := lncfg.ClientAddressDialer(defaultRPCPort)
+	opts = append(opts, grpc.WithDialer(genericDialer))
 	opts = append(opts, grpc.WithDefaultCallOptions(maxMsgRecvSize))
+
 	conn, err := grpc.Dial(ctx.GlobalString("rpcserver"), opts...)
 	if err != nil {
 		fatal(fmt.Errorf("unable to connect to RPC server: %v", err))
