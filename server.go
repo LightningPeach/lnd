@@ -11,6 +11,7 @@ import (
 	"net"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -165,6 +166,8 @@ type server struct {
 
 	connMgr *connmgr.ConnManager
 
+	sigPool *lnwallet.SigPool
+
 	// globalFeatures feature vector which affects HTLCs and thus are also
 	// advertised to other nodes.
 	globalFeatures *lnwire.FeatureVector
@@ -262,8 +265,9 @@ func newServer(listenAddrs []net.Addr, chanDB *channeldb.DB, cc *chainControl,
 	sphinxRouter := sphinx.NewRouter(privKey, activeNetParams.Params, replayLog)
 
 	s := &server{
-		chanDB: chanDB,
-		cc:     cc,
+		chanDB:  chanDB,
+		cc:      cc,
+		sigPool: lnwallet.NewSigPool(runtime.NumCPU()*2, cc.signer),
 
 		invoices: newInvoiceRegistry(chanDB),
 
@@ -564,12 +568,16 @@ func newServer(listenAddrs []net.Addr, chanDB *channeldb.DB, cc *chainControl,
 		return nil, fmt.Errorf("can't create router: %v", err)
 	}
 
+	chanSeries := discovery.NewChanSeries(
+		s.chanDB.ChannelGraph(),
+	)
+
 	s.authGossiper, err = discovery.New(discovery.Config{
 		Router:     s.chanRouter,
 		Notifier:   s.cc.chainNotifier,
 		ChainHash:  *activeNetParams.GenesisHash,
 		Broadcast:  s.BroadcastMessage,
-		ChanSeries: &chanSeries{s.chanDB.ChannelGraph()},
+		ChanSeries: chanSeries,
 		SendToPeer: s.SendToPeer,
 		FindPeer: func(pub *btcec.PublicKey) (lnpeer.Peer, error) {
 			return s.FindPeer(pub)
@@ -947,6 +955,9 @@ func (s *server) Start() error {
 	// sufficient number of confirmations, or when the input for the
 	// funding transaction is spent in an attempt at an uncooperative close
 	// by the counterparty.
+	if err := s.sigPool.Start(); err != nil {
+		return err
+	}
 	if err := s.cc.chainNotifier.Start(); err != nil {
 		return err
 	}
@@ -1034,6 +1045,7 @@ func (s *server) Stop() error {
 	}
 
 	// Shutdown the wallet, funding manager, and the rpc server.
+	s.sigPool.Stop()
 	s.cc.chainNotifier.Stop()
 	s.chanRouter.Stop()
 	s.htlcSwitch.Stop()
@@ -1639,19 +1651,39 @@ func (s *server) establishPersistentConnections() error {
 	if err != nil {
 		return err
 	}
+
 	// TODO(roasbeef): instead iterate over link nodes and query graph for
 	// each of the nodes.
+	selfPub := s.identityPriv.PubKey().SerializeCompressed()
 	err = sourceNode.ForEachChannel(nil, func(
-		_ *bolt.Tx,
-		_ *channeldb.ChannelEdgeInfo,
+		tx *bbolt.Tx,
+		chanInfo *channeldb.ChannelEdgeInfo,
 		policy, _ *channeldb.ChannelEdgePolicy) error {
 
-		pubStr := string(policy.Node.PubKeyBytes[:])
+		// If the remote party has announced the channel to us, but we
+		// haven't yet, then we won't have a policy. However, we don't
+		// need this to connect to the peer, so we'll log it and move on.
+		if policy == nil {
+			srvrLog.Warnf("No channel policy found for "+
+				"ChannelPoint(%v): ", chanInfo.ChannelPoint)
+		}
 
-		// Add all unique addresses from channel graph/NodeAnnouncements
-		// to the list of addresses we'll connect to for this peer.
+		// We'll now fetch the peer opposite from us within this
+		// channel so we can queue up a direct connection to them.
+		channelPeer, err := chanInfo.FetchOtherNode(tx, selfPub)
+		if err != nil {
+			return fmt.Errorf("unable to fetch channel peer for "+
+				"ChannelPoint(%v): %v", chanInfo.ChannelPoint,
+				err)
+		}
+
+		pubStr := string(channelPeer.PubKeyBytes[:])
+
+		// Add all unique addresses from channel
+		// graph/NodeAnnouncements to the list of addresses we'll
+		// connect to for this peer.
 		addrSet := make(map[string]net.Addr)
-		for _, addr := range policy.Node.Addresses {
+		for _, addr := range channelPeer.Addresses {
 			switch addr.(type) {
 			case *net.TCPAddr:
 				addrSet[addr.String()] = addr
@@ -1693,7 +1725,7 @@ func (s *server) establishPersistentConnections() error {
 		n := &nodeAddresses{
 			addresses: addrs,
 		}
-		n.pubKey, err = policy.Node.PubKey()
+		n.pubKey, err = channelPeer.PubKey()
 		if err != nil {
 			return err
 		}
@@ -2910,10 +2942,10 @@ func (s *server) announceChanStatus(op wire.OutPoint, disabled bool) error {
 
 	if disabled {
 		// Set the bit responsible for marking a channel as disabled.
-		chanUpdate.Flags |= lnwire.ChanUpdateDisabled
+		chanUpdate.ChannelFlags |= lnwire.ChanUpdateDisabled
 	} else {
 		// Clear the bit responsible for marking a channel as disabled.
-		chanUpdate.Flags &= ^lnwire.ChanUpdateDisabled
+		chanUpdate.ChannelFlags &= ^lnwire.ChanUpdateDisabled
 	}
 
 	// We must now update the message's timestamp and generate a new
@@ -2998,9 +3030,9 @@ func extractChannelUpdate(ownerPubKey []byte,
 	owner := func(edge *channeldb.ChannelEdgePolicy) []byte {
 		var pubKey *btcec.PublicKey
 		switch {
-		case edge.Flags&lnwire.ChanUpdateDirection == 0:
+		case edge.ChannelFlags&lnwire.ChanUpdateDirection == 0:
 			pubKey, _ = info.NodeKey1()
-		case edge.Flags&lnwire.ChanUpdateDirection == 1:
+		case edge.ChannelFlags&lnwire.ChanUpdateDirection == 1:
 			pubKey, _ = info.NodeKey2()
 		}
 
@@ -3032,9 +3064,11 @@ func createChannelUpdate(info *channeldb.ChannelEdgeInfo,
 		ChainHash:       info.ChainHash,
 		ShortChannelID:  lnwire.NewShortChanIDFromInt(policy.ChannelID),
 		Timestamp:       uint32(policy.LastUpdate.Unix()),
-		Flags:           policy.Flags,
+		MessageFlags:    policy.MessageFlags,
+		ChannelFlags:    policy.ChannelFlags,
 		TimeLockDelta:   policy.TimeLockDelta,
 		HtlcMinimumMsat: policy.MinHTLC,
+		HtlcMaximumMsat: policy.MaxHTLC,
 		BaseFee:         uint32(policy.FeeBaseMSat),
 		FeeRate:         uint32(policy.FeeProportionalMillionths),
 		ExtraOpaqueData: policy.ExtraOpaqueData,
