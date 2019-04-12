@@ -1294,6 +1294,19 @@ func messageSummary(msg lnwire.Message) string {
 // nil. Doing this avoids printing out each of the field elements in the curve
 // parameters for secp256k1.
 func (p *peer) logWireMessage(msg lnwire.Message, read bool) {
+	if p.server.chMessageDump != nil {
+		direction := lnwire.MessageSent
+		if read {
+			direction = lnwire.MessageReceived
+		}
+		p.server.chMessageDump <- &lnwire.MessageInfo{
+			Msg: msg,
+			Time: time.Now(),
+			Direction: direction,
+			PeerPubKey: p.IdentityKey(),
+		}
+	}
+
 	summaryPrefix := "Received"
 	if !read {
 		summaryPrefix = "Sending"

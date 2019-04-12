@@ -187,6 +187,9 @@ type server struct {
 	sentDisabled    map[wire.OutPoint]bool
 	sentDisabledMtx sync.Mutex
 
+	// chMessageDump is a channel with all messages sent or received by the server
+	chMessageDump chan *lnwire.MessageInfo
+
 	quit chan struct{}
 
 	wg sync.WaitGroup

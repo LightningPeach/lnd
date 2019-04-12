@@ -12,6 +12,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
@@ -47,6 +48,7 @@ import (
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnwallet"
 	"github.com/lightningnetwork/lnd/lnwallet/btcwallet"
+	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/macaroons"
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/lightningnetwork/lnd/walletunlocker"
@@ -322,6 +324,32 @@ func lndMain() error {
 	if err != nil {
 		srvrLog.Errorf("unable to create server: %v\n", err)
 		return err
+	}
+
+	// Enable message dump if requested
+	if cfg.MessageDumpFile != "" {
+		fMsg, err := os.Create(cfg.MessageDumpFile)
+		if err != nil {
+			ltndLog.Errorf("Unable to create message dump file: %v", err)
+			return err
+		}
+		defer func() {
+			// TODO: maybe close server.chMessageDump ?
+			if err := fMsg.Close(); err != nil {
+				ltndLog.Errorf("cannot close message dump file: %v", err)
+			}
+		}()
+
+		server.chMessageDump = make(chan *lnwire.MessageInfo, 100)
+
+		msgEncoder := json.NewEncoder(fMsg)
+		go func() {
+			for msg := range server.chMessageDump {
+				if err := msgEncoder.Encode(msg); err != nil {
+					ltndLog.Errorf("cannot write message info into message dump file: %v", err)
+				}
+			}
+		}()
 	}
 
 	var unaryInterceptors []grpc.UnaryServerInterceptor

@@ -69,6 +69,8 @@ const (
 
 	defaultAlias = ""
 	defaultColor = "#3399FF"
+
+	defaultMessageDumpFile = ""
 )
 
 var (
@@ -241,6 +243,8 @@ type config struct {
 
 	RejectPush bool `long:"rejectpush" description:"If true, lnd will not accept channel opening requests with non-zero push amounts. This should prevent accidental pushes to merchant nodes."`
 
+	MessageDumpFile string `long:"message-dump" description:"Dump messages (both received and sent) into specified file"`
+
 	net tor.Net
 
 	Routing *routing.Conf `group:"routing" namespace:"routing"`
@@ -315,7 +319,8 @@ func loadConfig() (*config, error) {
 			DNS:     defaultTorDNS,
 			Control: defaultTorControl,
 		},
-		net: &tor.ClearNet{},
+		net:             &tor.ClearNet{},
+		MessageDumpFile: defaultMessageDumpFile,
 	}
 
 	// Pre-parse the command line options to pick up an alternative config
