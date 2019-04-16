@@ -215,6 +215,10 @@ var (
 			Entity: "onchain",
 			Action: "read",
 		}},
+		"/lnrpc.Lightning/EstimateFee": {{
+			Entity: "onchain",
+			Action: "read",
+		}},
 		"/lnrpc.Lightning/ChannelBalance": {{
 			Entity: "offchain",
 			Action: "read",
@@ -466,6 +470,52 @@ func determineFeePerKw(feeEstimator lnwallet.FeeEstimator, targetConf int32,
 
 		return feePerKw, nil
 	}
+}
+
+// EstimateFee handles a request for estimating the fee for sending a
+// transaction spending to multiple specified outputs in parallel.
+func (r *rpcServer) EstimateFee(ctx context.Context,
+	in *lnrpc.EstimateFeeRequest) (*lnrpc.EstimateFeeResponse, error) {
+
+	// Create the list of outputs we are spending to.
+	outputs, err := addrPairsToOutputs(in.AddrToAmount)
+	if err != nil {
+		return nil, err
+	}
+
+	// Query the fee estimator for the fee rate for the given
+	// confirmation target.
+	target := in.TargetConf
+	feePerKw, err := determineFeePerKw(
+		r.server.cc.feeEstimator, target, 0,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// We will ask the wallet to create a tx using this fee rate. We set
+	// dryRun=true to avoid inflating the change addresses in the db.
+	tx, err := r.server.cc.wallet.CreateSimpleTx(outputs, feePerKw, true)
+	if err != nil {
+		return nil, err
+	}
+
+	// Use the created tx to calculate the total fee.
+	totalOutput := int64(0)
+	for _, out := range tx.Tx.TxOut {
+		totalOutput += out.Value
+	}
+	totalFee := int64(tx.TotalInput) - totalOutput
+
+	resp := &lnrpc.EstimateFeeResponse{
+		FeeSat:            totalFee,
+		FeerateSatPerByte: int64(feePerKw.FeePerKVByte() / 1000),
+	}
+
+	rpcsLog.Debugf("[estimatefee] fee estimate for conf target %d: %v",
+		target, resp)
+
+	return resp, nil
 }
 
 // SendCoins executes a request to send coins to a particular address. Unlike
