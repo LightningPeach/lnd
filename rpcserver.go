@@ -518,6 +518,51 @@ func (r *rpcServer) EstimateFee(ctx context.Context,
 	return resp, nil
 }
 
+func (r *rpcServer) SendOnChain(ctx context.Context,
+	in *lnrpc.SendOnChainRequest) (*lnrpc.SendOnChainResponse, error) {
+
+		// Based on the passed fee related parameters, we'll determine an
+		// appropriate fee rate for this transaction.
+		feePerKw, err := determineFeePerKw(
+			r.server.cc.feeEstimator, in.TargetConf, in.SatPerByte,
+		)
+
+		paymentMap := map[string]int64{in.Addr: in.Amount}
+		outputs, err := addrPairsToOutputs(paymentMap)
+		if err != nil {
+			return nil, err
+		}
+
+		// Create the transaction and broadcast it to the network. The
+		// transaction will be added to the database in order to ensure that we
+		// continue to re-broadcast the transaction upon restarts until it has
+		// been confirmed.
+		tx, err := r.server.cc.wallet.CreateSimpleTx(outputs, feePerKw, false)
+		if err != nil {
+			return nil, err
+		}
+
+		// Use the created tx to calculate the total fee.
+		totalOutput := int64(0)
+		for _, out := range tx.Tx.TxOut {
+			totalOutput += out.Value
+		}
+
+		if totalOutput > in.Cap {
+			return nil, fmt.Errorf("totalOutput is exceeded cap")
+		}
+
+		err = r.server.cc.wallet.PublishTransaction(tx.Tx)
+		if err != nil {
+			return nil, err
+		}
+
+		return &lnrpc.SendOnChainResponse{
+			Txid:        tx.Tx.TxHash().String(),
+			TotalAmount: totalOutput,
+		}, nil
+}
+
 // SendCoins executes a request to send coins to a particular address. Unlike
 // SendMany, this RPC call only allows creating a single output at a time.
 func (r *rpcServer) SendCoins(ctx context.Context,

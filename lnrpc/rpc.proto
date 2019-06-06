@@ -241,6 +241,20 @@ service Lightning {
         };
     }
 
+    /** lncli: `sendcoins`
+    SendCoins executes a request to send coins to a particular address. Unlike
+    SendMany, this RPC call only allows creating a single output at a time. If
+    neither target_conf, or sat_per_byte are set, then the internal wallet will
+    consult its fee model to determine a fee for the default confirmation
+    target.
+    */
+    rpc SendOnChain (SendOnChainRequest) returns (SendOnChainResponse) {
+        option (google.api.http) = {
+            post: "/v1/transactions/on_chain"
+            body: "*"
+        };
+    }
+
     /**
     SubscribeTransactions creates a uni-directional stream from the server to
     the client in which any newly discovered transactions relevant to the
@@ -823,6 +837,30 @@ message SendCoinsRequest {
 message SendCoinsResponse {
     /// The transaction ID of the transaction
     string txid = 1 [json_name = "txid"];
+}
+
+message SendOnChainRequest {
+    /// The address to send coins to
+    string addr = 1;
+
+    /// The amount in satoshis to send
+    int64 amount = 2;
+
+    /// The target number of blocks that this transaction should be confirmed by.
+    int32 target_conf = 3;
+
+    /// A manual fee rate set in sat/byte that should be used when crafting the transaction.
+    int64 sat_per_byte = 5;
+
+    // Amount that transaction should not exceed
+    int64 cap = 6;
+}
+message SendOnChainResponse {
+    /// The transaction ID of the transaction
+    string txid = 1 [json_name = "txid"];
+
+    /// Total amount of transaction
+    int64 total_amount = 2 [json_name = "total_amount"];
 }
 
 /** 
