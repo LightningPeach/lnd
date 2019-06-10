@@ -286,6 +286,110 @@ func sendCoins(ctx *cli.Context) error {
 	return nil
 }
 
+var sendOnChainCommand = cli.Command{
+	Name:      "sendonchain",
+	Category:  "On-chain",
+	Usage:     "Send bitcoin on-chain to an address with cap.",
+	ArgsUsage: "addr amt",
+	Description: `
+	Send amt coins in satoshis to the BASE58 encoded bitcoin address addr.
+
+	Fees used when sending the transaction can be specified via the --conf_target, or
+	--sat_per_byte optional flags.
+
+	Positional arguments and flags can be used interchangeably but not at the same time!
+	`,
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  "addr",
+			Usage: "the BASE58 encoded bitcoin address to send coins to on-chain",
+		},
+		// TODO(roasbeef): switch to BTC on command line? int may not be sufficient
+		cli.Int64Flag{
+			Name:  "amt",
+			Usage: "the number of bitcoin denominated in satoshis to send",
+		},
+		cli.Int64Flag{
+			Name: "cap",
+			Usage: "(optional) a manual cap for transaction total amount ",
+		},
+		cli.Int64Flag{
+			Name: "conf_target",
+			Usage: "(optional) the number of blocks that the " +
+				"transaction *should* confirm in, will be " +
+				"used for fee estimation",
+		},
+		cli.Int64Flag{
+			Name: "sat_per_byte",
+			Usage: "(optional) a manual fee expressed in " +
+				"sat/byte that should be used when crafting " +
+				"the transaction",
+		},
+	},
+	Action: actionDecorator(sendCoins),
+}
+
+func sendOnChain(ctx *cli.Context) error {
+	var (
+		addr string
+		amt  int64
+		err  error
+	)
+	args := ctx.Args()
+
+	if ctx.NArg() == 0 && ctx.NumFlags() == 0 {
+		cli.ShowCommandHelp(ctx, "sendonchain")
+		return nil
+	}
+
+	if ctx.IsSet("conf_target") && ctx.IsSet("sat_per_byte") {
+		return fmt.Errorf("either conf_target or sat_per_byte should be " +
+			"set, but not both")
+	}
+
+	switch {
+	case ctx.IsSet("addr"):
+		addr = ctx.String("addr")
+	case args.Present():
+		addr = args.First()
+		args = args.Tail()
+	default:
+		return fmt.Errorf("Address argument missing")
+	}
+
+	switch {
+	case ctx.IsSet("amt"):
+		amt = ctx.Int64("amt")
+	case args.Present():
+		amt, err = strconv.ParseInt(args.First(), 10, 64)
+	default:
+		return fmt.Errorf("Amount argument missing")
+	}
+
+	if err != nil {
+		return fmt.Errorf("unable to decode amount: %v", err)
+	}
+
+	ctxb := context.Background()
+	client, cleanUp := getClient(ctx)
+	defer cleanUp()
+
+	req := &lnrpc.SendOnChainRequest{
+		Addr:       addr,
+		Amount:     amt,
+		TargetConf: int32(ctx.Int64("conf_target")),
+		SatPerByte: ctx.Int64("sat_per_byte"),
+		Cap:        int64(ctx.Int64("cap")),
+	}
+	txid, err := client.SendOnChain(ctxb, req)
+	if err != nil {
+		return err
+	}
+
+	printRespJSON(txid)
+	return nil
+}
+
 var sendManyCommand = cli.Command{
 	Name:      "sendmany",
 	Category:  "On-chain",
