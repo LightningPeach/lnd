@@ -154,6 +154,10 @@ var (
 			Entity: "onchain",
 			Action: "write",
 		}},
+		"/lnrpc.Lightning/SendOnChain": {{
+			Entity: "onchain",
+			Action: "write",
+		}},
 		"/lnrpc.Lightning/SendMany": {{
 			Entity: "onchain",
 			Action: "write",
