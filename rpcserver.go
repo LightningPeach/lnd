@@ -553,7 +553,9 @@ func (r *rpcServer) SendOnChain(ctx context.Context,
 		}
 
 		if totalOutput > in.Cap {
-			return nil, fmt.Errorf("totalOutput is exceeded cap")
+			return nil, fmt.Errorf("totalOutput is exceeded cap of %v: " +
+				"actual total output is %v",
+				in.Cap, totalOutput)
 		}
 
 		err = r.server.cc.wallet.PublishTransaction(tx.Tx)
