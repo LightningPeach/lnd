@@ -551,8 +551,11 @@ func (r *rpcServer) SendOnChain(ctx context.Context,
 		for _, out := range tx.Tx.TxOut {
 			totalOutput += out.Value
 		}
+		totalFee := int64(tx.TotalInput) - totalOutput
+		totalAmount := totalFee + in.Amount
 
-		if totalOutput > in.Cap {
+		// check that we don't exceed the cap
+		if totalAmount > in.Cap {
 			return nil, fmt.Errorf("totalOutput is exceeded cap of %v: " +
 				"actual total output is %v",
 				in.Cap, totalOutput)
@@ -565,7 +568,7 @@ func (r *rpcServer) SendOnChain(ctx context.Context,
 
 		return &lnrpc.SendOnChainResponse{
 			Txid:        tx.Tx.TxHash().String(),
-			TotalAmount: totalOutput,
+			TotalAmount: totalAmount,
 		}, nil
 }
 
