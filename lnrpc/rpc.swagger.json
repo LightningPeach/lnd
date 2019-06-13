@@ -2474,9 +2474,8 @@
     "lnrpcOutput": {
       "type": "object",
       "properties": {
-        "pk_script": {
-          "type": "string",
-          "format": "byte"
+        "address": {
+          "type": "string"
         },
         "amount": {
           "type": "string",

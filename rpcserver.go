@@ -3375,9 +3375,18 @@ func (r *rpcServer) GetTransaction(ctx context.Context,
 			// convert
 			outputs := make([]*lnrpc.Output, 0)
 			for i, out := range tx.TxOut {
+				_, outAddress, _, err :=
+					txscript.ExtractPkScriptAddrs(out.PkScript, &r.server.cc.wallet.Cfg.NetParams)
+				if err != nil {
+					return nil, err
+				}
+				if len(outAddress) != 1 {
+					return nil, fmt.Errorf("cannot decode output: incorrect number of output")
+				}
+
 				outputs[i] = &lnrpc.Output{
-					Amount:   out.Value,
-					PkScript: out.PkScript,
+					Amount:  out.Value,
+					Address: outAddress[0].EncodeAddress(),
 				}
 			}
 			txDetails.Transactions[0] = &lnrpc.ExtendedTransaction{

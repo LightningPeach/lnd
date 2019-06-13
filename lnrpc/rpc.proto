@@ -717,7 +717,7 @@ message TransactionDetails {
 
 
 message Output {
-    bytes pk_script = 1 [ json_name = "pk_script" ];
+    string address = 1 [ json_name = "address" ];
     int64 amount = 2 [ json_name = "amount" ];
 }
 message ExtendedTransaction {
