@@ -3373,7 +3373,7 @@ func (r *rpcServer) GetTransaction(ctx context.Context,
 	for _, tx := range block.Transactions {
 		if tx.TxHash().String() == in.TxHash {
 			// convert
-			outputs := make([]*lnrpc.Output, 0)
+			outputs := make([]*lnrpc.Output, len(tx.TxOut))
 			for i, out := range tx.TxOut {
 				_, outAddress, _, err :=
 					txscript.ExtractPkScriptAddrs(out.PkScript, &r.server.cc.wallet.Cfg.NetParams)
