@@ -3398,11 +3398,12 @@ func (r *rpcServer) GetTransaction(ctx context.Context,
 				TotalFees:        particularTransaction.TotalFees,
 				Outputs:          outputs,
 			}
+
 			return txDetails, nil
 		}
 	}
 
-	return txDetails, nil
+	return nil, fmt.Errorf("cannot find transaction in block")
 }
 
 // DescribeGraph returns a description of the latest graph state from the PoV
