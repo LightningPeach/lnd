@@ -3367,7 +3367,7 @@ func (r *rpcServer) GetTransaction(ctx context.Context,
 	}
 
 	txDetails := &lnrpc.GetTransactionResponse{
-		Transactions: make([]*lnrpc.ExtendedTransaction, 0),
+		Transactions: make([]*lnrpc.ExtendedTransaction, 1),
 	}
 
 	for _, tx := range block.Transactions {
