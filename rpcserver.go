@@ -279,6 +279,10 @@ var (
 			Entity: "onchain",
 			Action: "read",
 		}},
+		"/lnrpc.Lightning/GetTransaction": {{
+			Entity: "onchain",
+			Action: "read",
+		}},
 		"/lnrpc.Lightning/DescribeGraph": {{
 			Entity: "info",
 			Action: "read",
@@ -3254,6 +3258,8 @@ func (r *rpcServer) SubscribeInvoices(req *lnrpc.InvoiceSubscription,
 	}
 }
 
+
+
 // SubscribeTransactions creates a uni-directional stream (server -> client) in
 // which any newly discovered transactions relevant to the wallet are sent
 // over.
@@ -3334,6 +3340,56 @@ func (r *rpcServer) GetTransactions(ctx context.Context,
 			TimeStamp:        tx.Timestamp,
 			TotalFees:        tx.TotalFees,
 			DestAddresses:    destAddresses,
+		}
+	}
+
+	return txDetails, nil
+}
+
+// GetTransaction returns a transaction with provided txHash
+func (r *rpcServer) GetTransaction(ctx context.Context,
+	in *lnrpc.GetTransactionRequest) (*lnrpc.GetTransactionResponse, error) {
+	allTransactions, err := r.server.cc.wallet.ListTransactionDetails()
+	var particularTransaction *lnwallet.TransactionDetail
+	for _, tx := range allTransactions {
+		if tx.BlockHash.String() == in.TxHash {
+			particularTransaction = tx
+			break
+		}
+	}
+	if particularTransaction == nil {
+		return nil, fmt.Errorf("cannot find transaction")
+	}
+
+	block, err := r.server.cc.chainIO.GetBlock(particularTransaction.BlockHash)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get block: %v", err)
+	}
+
+	txDetails := &lnrpc.GetTransactionResponse{
+		Transactions: make([]*lnrpc.ExtendedTransaction, 0),
+	}
+
+	for _, tx := range block.Transactions {
+		if tx.TxHash().String() == in.TxHash {
+			// convert
+			outputs := make([]*lnrpc.Output, 0)
+			for i, out := range tx.TxOut {
+				outputs[i] = &lnrpc.Output{
+					Amount:   out.Value,
+					PkScript: out.PkScript,
+				}
+			}
+			txDetails.Transactions[0] = &lnrpc.ExtendedTransaction{
+				TxHash:           particularTransaction.Hash.String(),
+				NumConfirmations: particularTransaction.NumConfirmations,
+				BlockHash:        particularTransaction.BlockHash.String(),
+				BlockHeight:      particularTransaction.BlockHeight,
+				TimeStamp:        particularTransaction.Timestamp,
+				TotalFees:        particularTransaction.TotalFees,
+				Outputs:          outputs,
+			}
+			return txDetails, nil
 		}
 	}
 

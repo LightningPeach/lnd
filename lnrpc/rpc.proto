@@ -217,6 +217,16 @@ service Lightning {
         };
     }
 
+    /** lncli: `listchaintxns`
+    GetTransactions returns a list describing all the known transactions
+    relevant to the wallet.
+    */
+    rpc GetTransaction (GetTransactionRequest) returns (GetTransactionResponse) {
+        option (google.api.http) = {
+            get: "/v1/transaction"
+        };
+    }
+
     /** lncli: `estimatefee`
     EstimateFee asks the chain backend to estimate the fee rate and total fees
     for a transaction that pays to multiple specified outputs.
@@ -703,6 +713,40 @@ message GetTransactionsRequest {
 message TransactionDetails {
     /// The list of transactions relevant to the wallet.
     repeated Transaction transactions = 1 [json_name = "transactions"];
+}
+
+
+message Output {
+    bytes pk_script = 1 [ json_name = "pk_script" ];
+    int64 amount = 2 [ json_name = "amount" ];
+}
+message ExtendedTransaction {
+    /// The transaction hash
+    string tx_hash = 1 [ json_name = "tx_hash" ];
+
+    /// The number of confirmations
+    int32 num_confirmations = 2 [ json_name = "num_confirmations" ];
+
+    /// The hash of the block this transaction was included in
+    string block_hash = 3 [ json_name = "block_hash" ];
+
+    /// The height of the block this transaction was included in
+    int32 block_height = 4 [ json_name = "block_height" ];
+
+    /// Timestamp of this transaction
+    int64 time_stamp = 5 [ json_name = "time_stamp" ];
+
+    /// Fees paid for this transaction
+    int64 total_fees = 6 [ json_name = "total_fees" ];
+
+    /// Addresses that received funds for this transaction
+    repeated Output outputs = 7 [ json_name = "outputs" ];
+}
+message GetTransactionRequest {
+    string tx_hash = 1 [ json_name = "tx_hash" ];
+}
+message GetTransactionResponse {
+    repeated ExtendedTransaction transactions = 1 [ json_name = "transactions" ];
 }
 
 message FeeLimit {

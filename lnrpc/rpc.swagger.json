@@ -955,6 +955,31 @@
         ]
       }
     },
+    "/v1/transaction": {
+      "get": {
+        "summary": "* lncli: `listchaintxns`\nGetTransactions returns a list describing all the known transactions\nrelevant to the wallet.",
+        "operationId": "GetTransaction",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/lnrpcGetTransactionResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "tx_hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Lightning"
+        ]
+      }
+    },
     "/v1/transactions": {
       "get": {
         "summary": "* lncli: `listchaintxns`\nGetTransactions returns a list describing all the known transactions\nrelevant to the wallet.",
@@ -1666,6 +1691,46 @@
         }
       }
     },
+    "lnrpcExtendedTransaction": {
+      "type": "object",
+      "properties": {
+        "tx_hash": {
+          "type": "string",
+          "title": "/ The transaction hash"
+        },
+        "num_confirmations": {
+          "type": "integer",
+          "format": "int32",
+          "title": "/ The number of confirmations"
+        },
+        "block_hash": {
+          "type": "string",
+          "title": "/ The hash of the block this transaction was included in"
+        },
+        "block_height": {
+          "type": "integer",
+          "format": "int32",
+          "title": "/ The height of the block this transaction was included in"
+        },
+        "time_stamp": {
+          "type": "string",
+          "format": "int64",
+          "title": "/ Timestamp of this transaction"
+        },
+        "total_fees": {
+          "type": "string",
+          "format": "int64",
+          "title": "/ Fees paid for this transaction"
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/lnrpcOutput"
+          },
+          "title": "/ Addresses that received funds for this transaction"
+        }
+      }
+    },
     "lnrpcFeeLimit": {
       "type": "object",
       "properties": {
@@ -1874,6 +1939,17 @@
           "type": "integer",
           "format": "int64",
           "title": "/ Number of inactive channels"
+        }
+      }
+    },
+    "lnrpcGetTransactionResponse": {
+      "type": "object",
+      "properties": {
+        "transactions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/lnrpcExtendedTransaction"
+          }
         }
       }
     },
@@ -2392,6 +2468,19 @@
         },
         "chan_open": {
           "$ref": "#/definitions/lnrpcChannelOpenUpdate"
+        }
+      }
+    },
+    "lnrpcOutput": {
+      "type": "object",
+      "properties": {
+        "pk_script": {
+          "type": "string",
+          "format": "byte"
+        },
+        "amount": {
+          "type": "string",
+          "format": "int64"
         }
       }
     },

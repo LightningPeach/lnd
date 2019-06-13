@@ -326,7 +326,7 @@ var sendOnChainCommand = cli.Command{
 				"the transaction",
 		},
 	},
-	Action: actionDecorator(sendCoins),
+	Action: actionDecorator(sendOnChain),
 }
 
 func sendOnChain(ctx *cli.Context) error {
@@ -3008,6 +3008,49 @@ func listChainTxns(ctx *cli.Context) error {
 	defer cleanUp()
 
 	resp, err := client.GetTransactions(ctxb, &lnrpc.GetTransactionsRequest{})
+
+	if err != nil {
+		return err
+	}
+
+	printRespJSON(resp)
+	return nil
+}
+
+var getTransactionCommand = cli.Command{
+	Name:        "gettransaction",
+	Category:    "On-chain",
+	Usage:       "Get transaction by tx_hash.",
+	Description: "Get transaction by tx_hash.",
+	ArgsUsage:   "tx_hash",
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  "tx_hash",
+			Usage: "hash of transaction",
+		},
+	},
+	Action:      actionDecorator(getTransaction),
+}
+
+func getTransaction(ctx *cli.Context) error {
+	ctxb := context.Background()
+	client, cleanUp := getClient(ctx)
+	defer cleanUp()
+
+	var txhash string
+
+	switch {
+	case ctx.IsSet("tx_hash"):
+		txhash = ctx.String("tx_hash")
+	case ctx.Args().Present():
+		txhash = ctx.Args().First()
+	default:
+		return fmt.Errorf("tx_hash argument missing")
+	}
+
+	resp, err := client.GetTransaction(ctxb, &lnrpc.GetTransactionRequest{
+		TxHash: txhash,
+	})
 
 	if err != nil {
 		return err
