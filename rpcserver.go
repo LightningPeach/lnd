@@ -3352,7 +3352,7 @@ func (r *rpcServer) GetTransaction(ctx context.Context,
 	allTransactions, err := r.server.cc.wallet.ListTransactionDetails()
 	var particularTransaction *lnwallet.TransactionDetail
 	for _, tx := range allTransactions {
-		if tx.BlockHash.String() == in.TxHash {
+		if tx.Hash.String() == in.TxHash {
 			particularTransaction = tx
 			break
 		}
