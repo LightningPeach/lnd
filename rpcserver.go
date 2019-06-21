@@ -534,6 +534,9 @@ func (r *rpcServer) SendOnChain(ctx context.Context,
 		feePerKw, err := determineFeePerKw(
 			r.server.cc.feeEstimator, in.TargetConf, in.SatPerByte,
 		)
+		if err != nil {
+			return nil, err
+		}
 
 		paymentMap := map[string]int64{in.Addr: in.Amount}
 		outputs, err := addrPairsToOutputs(paymentMap)
