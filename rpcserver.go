@@ -154,6 +154,10 @@ var (
 			Entity: "onchain",
 			Action: "write",
 		}},
+		"/lnrpc.Lightning/SendOnChain": {{
+			Entity: "onchain",
+			Action: "write",
+		}},
 		"/lnrpc.Lightning/SendMany": {{
 			Entity: "onchain",
 			Action: "write",
@@ -272,6 +276,10 @@ var (
 			Action: "read",
 		}},
 		"/lnrpc.Lightning/GetTransactions": {{
+			Entity: "onchain",
+			Action: "read",
+		}},
+		"/lnrpc.Lightning/GetTransaction": {{
 			Entity: "onchain",
 			Action: "read",
 		}},
@@ -516,6 +524,56 @@ func (r *rpcServer) EstimateFee(ctx context.Context,
 		target, resp)
 
 	return resp, nil
+}
+
+func (r *rpcServer) SendOnChain(ctx context.Context,
+	in *lnrpc.SendOnChainRequest) (*lnrpc.SendOnChainResponse, error) {
+
+		// Based on the passed fee related parameters, we'll determine an
+		// appropriate fee rate for this transaction.
+		feePerKw, err := determineFeePerKw(
+			r.server.cc.feeEstimator, in.TargetConf, in.SatPerByte,
+		)
+
+		paymentMap := map[string]int64{in.Addr: in.Amount}
+		outputs, err := addrPairsToOutputs(paymentMap)
+		if err != nil {
+			return nil, err
+		}
+
+		// Create the transaction and broadcast it to the network. The
+		// transaction will be added to the database in order to ensure that we
+		// continue to re-broadcast the transaction upon restarts until it has
+		// been confirmed.
+		tx, err := r.server.cc.wallet.CreateSimpleTx(outputs, feePerKw, false)
+		if err != nil {
+			return nil, err
+		}
+
+		// Use the created tx to calculate the total fee.
+		totalOutput := int64(0)
+		for _, out := range tx.Tx.TxOut {
+			totalOutput += out.Value
+		}
+		totalFee := int64(tx.TotalInput) - totalOutput
+		totalAmount := totalFee + in.Amount
+
+		// check that we don't exceed the cap
+		if totalAmount > in.Cap {
+			return nil, fmt.Errorf("totalOutput is exceeded cap of %v: " +
+				"actual total output is %v",
+				in.Cap, totalOutput)
+		}
+
+		err = r.server.cc.wallet.PublishTransaction(tx.Tx)
+		if err != nil {
+			return nil, err
+		}
+
+		return &lnrpc.SendOnChainResponse{
+			Txid:        tx.Tx.TxHash().String(),
+			TotalAmount: totalAmount,
+		}, nil
 }
 
 // SendCoins executes a request to send coins to a particular address. Unlike
@@ -3200,6 +3258,8 @@ func (r *rpcServer) SubscribeInvoices(req *lnrpc.InvoiceSubscription,
 	}
 }
 
+
+
 // SubscribeTransactions creates a uni-directional stream (server -> client) in
 // which any newly discovered transactions relevant to the wallet are sent
 // over.
@@ -3284,6 +3344,66 @@ func (r *rpcServer) GetTransactions(ctx context.Context,
 	}
 
 	return txDetails, nil
+}
+
+// GetTransaction returns a transaction with provided txHash
+func (r *rpcServer) GetTransaction(ctx context.Context,
+	in *lnrpc.GetTransactionRequest) (*lnrpc.GetTransactionResponse, error) {
+	allTransactions, err := r.server.cc.wallet.ListTransactionDetails()
+	var particularTransaction *lnwallet.TransactionDetail
+	for _, tx := range allTransactions {
+		if tx.Hash.String() == in.TxHash {
+			particularTransaction = tx
+			break
+		}
+	}
+	if particularTransaction == nil {
+		return nil, fmt.Errorf("cannot find transaction")
+	}
+
+	block, err := r.server.cc.chainIO.GetBlock(particularTransaction.BlockHash)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get block: %v", err)
+	}
+
+	txDetails := &lnrpc.GetTransactionResponse{
+		Transactions: make([]*lnrpc.ExtendedTransaction, 1),
+	}
+
+	for _, tx := range block.Transactions {
+		if tx.TxHash().String() == in.TxHash {
+			// convert
+			outputs := make([]*lnrpc.Output, len(tx.TxOut))
+			for i, out := range tx.TxOut {
+				_, outAddress, _, err :=
+					txscript.ExtractPkScriptAddrs(out.PkScript, &r.server.cc.wallet.Cfg.NetParams)
+				if err != nil {
+					return nil, err
+				}
+				if len(outAddress) != 1 {
+					return nil, fmt.Errorf("cannot decode output: incorrect number of output")
+				}
+
+				outputs[i] = &lnrpc.Output{
+					Amount:  out.Value,
+					Address: outAddress[0].EncodeAddress(),
+				}
+			}
+			txDetails.Transactions[0] = &lnrpc.ExtendedTransaction{
+				TxHash:           particularTransaction.Hash.String(),
+				NumConfirmations: particularTransaction.NumConfirmations,
+				BlockHash:        particularTransaction.BlockHash.String(),
+				BlockHeight:      particularTransaction.BlockHeight,
+				TimeStamp:        particularTransaction.Timestamp,
+				TotalFees:        particularTransaction.TotalFees,
+				Outputs:          outputs,
+			}
+
+			return txDetails, nil
+		}
+	}
+
+	return nil, fmt.Errorf("cannot find transaction in block")
 }
 
 // DescribeGraph returns a description of the latest graph state from the PoV

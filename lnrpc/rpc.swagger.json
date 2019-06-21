@@ -955,6 +955,31 @@
         ]
       }
     },
+    "/v1/transaction": {
+      "get": {
+        "summary": "* lncli: `listchaintxns`\nGetTransactions returns a list describing all the known transactions\nrelevant to the wallet.",
+        "operationId": "GetTransaction",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/lnrpcGetTransactionResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "tx_hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Lightning"
+        ]
+      }
+    },
     "/v1/transactions": {
       "get": {
         "summary": "* lncli: `listchaintxns`\nGetTransactions returns a list describing all the known transactions\nrelevant to the wallet.",
@@ -1017,6 +1042,33 @@
             "required": false,
             "type": "integer",
             "format": "int32"
+          }
+        ],
+        "tags": [
+          "Lightning"
+        ]
+      }
+    },
+    "/v1/transactions/on_chain": {
+      "post": {
+        "summary": "* lncli: `sendcoins`\nSendCoins executes a request to send coins to a particular address. Unlike\nSendMany, this RPC call only allows creating a single output at a time. If\nneither target_conf, or sat_per_byte are set, then the internal wallet will\nconsult its fee model to determine a fee for the default confirmation\ntarget.",
+        "operationId": "SendOnChain",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/lnrpcSendOnChainResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/lnrpcSendOnChainRequest"
+            }
           }
         ],
         "tags": [
@@ -1639,6 +1691,46 @@
         }
       }
     },
+    "lnrpcExtendedTransaction": {
+      "type": "object",
+      "properties": {
+        "tx_hash": {
+          "type": "string",
+          "title": "/ The transaction hash"
+        },
+        "num_confirmations": {
+          "type": "integer",
+          "format": "int32",
+          "title": "/ The number of confirmations"
+        },
+        "block_hash": {
+          "type": "string",
+          "title": "/ The hash of the block this transaction was included in"
+        },
+        "block_height": {
+          "type": "integer",
+          "format": "int32",
+          "title": "/ The height of the block this transaction was included in"
+        },
+        "time_stamp": {
+          "type": "string",
+          "format": "int64",
+          "title": "/ Timestamp of this transaction"
+        },
+        "total_fees": {
+          "type": "string",
+          "format": "int64",
+          "title": "/ Fees paid for this transaction"
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/lnrpcOutput"
+          },
+          "title": "/ Addresses that received funds for this transaction"
+        }
+      }
+    },
     "lnrpcFeeLimit": {
       "type": "object",
       "properties": {
@@ -1847,6 +1939,17 @@
           "type": "integer",
           "format": "int64",
           "title": "/ Number of inactive channels"
+        }
+      }
+    },
+    "lnrpcGetTransactionResponse": {
+      "type": "object",
+      "properties": {
+        "transactions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/lnrpcExtendedTransaction"
+          }
         }
       }
     },
@@ -2368,6 +2471,18 @@
         }
       }
     },
+    "lnrpcOutput": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
     "lnrpcPayReq": {
       "type": "object",
       "properties": {
@@ -2740,6 +2855,49 @@
         "txid": {
           "type": "string",
           "title": "/ The id of the transaction"
+        }
+      }
+    },
+    "lnrpcSendOnChainRequest": {
+      "type": "object",
+      "properties": {
+        "addr": {
+          "type": "string",
+          "title": "/ The address to send coins to"
+        },
+        "amount": {
+          "type": "string",
+          "format": "int64",
+          "title": "/ The amount in satoshis to send"
+        },
+        "target_conf": {
+          "type": "integer",
+          "format": "int32",
+          "description": "/ The target number of blocks that this transaction should be confirmed by."
+        },
+        "sat_per_byte": {
+          "type": "string",
+          "format": "int64",
+          "description": "/ A manual fee rate set in sat/byte that should be used when crafting the transaction."
+        },
+        "cap": {
+          "type": "string",
+          "format": "int64",
+          "title": "Amount that transaction should not exceed"
+        }
+      }
+    },
+    "lnrpcSendOnChainResponse": {
+      "type": "object",
+      "properties": {
+        "txid": {
+          "type": "string",
+          "title": "/ The transaction ID of the transaction"
+        },
+        "total_amount": {
+          "type": "string",
+          "format": "int64",
+          "title": "/ Total amount of transaction"
         }
       }
     },
